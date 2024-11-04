@@ -238,7 +238,19 @@ const updateSpaceCensorshipAndCommunityStandards = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Error updating space and community standards' });
   }
 };
-
+const updateSpace = async (req, res) => {
+  try {
+    const updateSpace = await spaceDao.updateSpaces(
+      req.params.id,
+      req.body
+    );
+    res.status(200).json(updateSpace);
+    console.log("Updated space successfully");
+  } catch (error) {
+    res.status(500).json({ error: error.toString() });
+    console.log("Failed to update space");
+  }
+};
 
 export default {
   getAllSpaces,
@@ -250,5 +262,6 @@ export default {
   uploadImages,
   getAllSpacesApply,
   deleteSpace,
-  updateSpaceCensorshipAndCommunityStandards
+  updateSpaceCensorshipAndCommunityStandards,
+  updateSpace
 }

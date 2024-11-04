@@ -60,4 +60,12 @@ const deleteSpace = async (id) => {
     throw new Error(error.toString());
   }
 };
-export default { fetchAllSpaces, fetchSimilarSpaces, createSpace, fetchAllSpaceFavorite, fetchAllSpacesApply, deleteSpace }
+const updateSpaces = async (id, spacesData) => {
+  try {
+    const editSpace = await Spaces.findOneAndUpdate({ _id: id }, spacesData, { new: true }).exec()
+    return editSpace
+  } catch (error) {
+    throw new Error(error.toString())
+  }
+}
+export default { fetchAllSpaces, fetchSimilarSpaces, createSpace, fetchAllSpaceFavorite, fetchAllSpacesApply, deleteSpace, updateSpaces }

@@ -30,8 +30,7 @@ spaceRouter.post('/uploadImages', uploadCloud.array('images', 10), spaceControll
 spaceRouter.post('/removeImage', spaceController.removeImages);
 spaceRouter.delete('/delete/:id', spaceController.deleteSpace);
 spaceRouter.put('/update-censorship/:id', spaceController.updateSpaceCensorshipAndCommunityStandards);
-
-
+spaceRouter.put('/:id', spaceController.updateSpace);
 
 
 // tim kiem space
