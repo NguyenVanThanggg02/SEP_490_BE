@@ -20,7 +20,7 @@ const fetchAllAppliances = async () => {
 
 
 
-// Thêm tiện ích tùy chỉnh vào 
+// Thêm tiện ích tùy chỉnh vào data
 export const addCustomAppliance = async (applianceData) => {
   try {
     const newAppliance = new Appliances(applianceData);
