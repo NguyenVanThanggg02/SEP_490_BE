@@ -3,8 +3,10 @@ import { spaceDao, appliancesDao } from "../dao/index.js";
 import CommunityStandards from "../models/communityStandards.js";
 import Spaces from "../models/spaces.js";
 import mongoose from "mongoose";
+import Rules from "../models/rules.js";
 
 import pkg from 'cloudinary'; // Nhập package cloudinary dưới dạng mặc định
+import Appliances from "../models/appliances.js";
 const getAllSpacesApply = async (req, res) => {
   try {
     const allSpaces = await spaceDao.fetchAllSpacesApply();
@@ -131,6 +133,90 @@ const createNewSpace = async (req, res) => {
   }
 };
 
+const updateSpace = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const {
+      name,
+      rulesId,
+      pricePerHour,
+      pricePerDay,
+      pricePerWeek,
+      pricePerMonth,
+      images,
+      location,
+      latLng,
+      categoriesId,
+      appliancesId,
+      isGoldenHour,
+      goldenHourDetails,
+    } = req.body;
+
+    let formattedImages = [];
+    if (Array.isArray(images)) {
+      formattedImages = images.map((img) => ({
+        public_id: img.public_id, // Cần đảm bảo bạn gửi đúng public_id và url từ request
+        url: img.url,
+      }));
+    } else if (images && images.public_id && images.url) {
+      formattedImages = [
+        {
+          public_id: images.public_id,
+          url: images.url,
+        },
+      ];
+    }
+
+    const spaceData = {
+      name,
+      pricePerHour,
+      pricePerDay,
+      pricePerWeek,
+      pricePerMonth,
+      images,
+      location,
+      locationPoint: {
+        type: "Point",
+        coordinates:
+          latLng && latLng.length === 2 ? [latLng[1], latLng[0]] : null,
+      },
+      latLng,
+      categoriesId,
+      isGoldenHour,
+      goldenHourDetails,
+      censorship: "Chờ duyệt",
+    };
+
+    const updatedRules = await Rules.findByIdAndUpdate(rulesId._id, {
+      ...rulesId,
+    }).lean();
+    if (!updatedRules)
+      return res.status(404).json({
+        success: false,
+        message: `Error updating space: rule not found`,
+      });
+    const updatedAppliances = await Appliances.findByIdAndUpdate(
+      appliancesId._id,
+      { ...appliancesId }
+    ).lean();
+    if (!updatedAppliances)
+      return res.status(404).json({
+        success: false,
+        message: `Error updating space: appliances not found`,
+      });
+
+    const updatedSpace = await spaceDao.updateSpace(id, spaceData);
+    console.log("updatedSpace", updatedSpace, updatedAppliances, updatedRules);
+
+    return res.status(201).json({ success: true, space: updatedSpace });
+  } catch (error) {
+    console.error("Error updating space:", error);
+    return res.status(500).json({
+      success: false,
+      message: `Error updating space: ${error.message}`,
+    });
+  }
+};
 
 const changeFavoriteStatus = async (req, res) => {
   try {
@@ -238,19 +324,7 @@ const updateSpaceCensorshipAndCommunityStandards = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Error updating space and community standards' });
   }
 };
-const updateSpace = async (req, res) => {
-  try {
-    const updateSpace = await spaceDao.updateSpaces(
-      req.params.id,
-      req.body
-    );
-    res.status(200).json(updateSpace);
-    console.log("Updated space successfully");
-  } catch (error) {
-    res.status(500).json({ error: error.toString() });
-    console.log("Failed to update space");
-  }
-};
+
 
 export default {
   getAllSpaces,

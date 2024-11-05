@@ -52,6 +52,17 @@ export const createSpace = async (spaceData) => {
   }
 };
 
+export const updateSpace = async (id, spaceData) => {
+  try {
+    console.log("updateSpace", spaceData);
+    const updatedSpace = await Spaces.findByIdAndUpdate(id, spaceData).lean();
+    return updatedSpace;
+  } catch (error) {
+    console.error("Error updating space to database:", error);
+    throw new Error("Error updating space in DAO");
+  }
+};
+
 const deleteSpace = async (id) => {
   try {
     const deleteProduct = await Spaces.findByIdAndDelete(id).exec();
@@ -60,12 +71,5 @@ const deleteSpace = async (id) => {
     throw new Error(error.toString());
   }
 };
-const updateSpaces = async (id, spacesData) => {
-  try {
-    const editSpace = await Spaces.findOneAndUpdate({ _id: id }, spacesData, { new: true }).exec()
-    return editSpace
-  } catch (error) {
-    throw new Error(error.toString())
-  }
-}
-export default { fetchAllSpaces, fetchSimilarSpaces, createSpace, fetchAllSpaceFavorite, fetchAllSpacesApply, deleteSpace, updateSpaces }
+
+export default { fetchAllSpaces, fetchSimilarSpaces, createSpace, fetchAllSpaceFavorite, fetchAllSpacesApply, deleteSpace, updateSpace }
