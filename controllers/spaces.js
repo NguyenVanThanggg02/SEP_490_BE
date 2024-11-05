@@ -1,10 +1,9 @@
 import cloudinary from "../cloudinary.config.js";
-import { spaceDao, appliancesDao } from "../dao/index.js";
+import { spaceDao } from "../dao/index.js";
 import CommunityStandards from "../models/communityStandards.js";
 import Spaces from "../models/spaces.js";
 import mongoose from "mongoose";
 
-import pkg from 'cloudinary'; // Nhập package cloudinary dưới dạng mặc định
 const getAllSpacesApply = async (req, res) => {
   try {
     const allSpaces = await spaceDao.fetchAllSpacesApply();

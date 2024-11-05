@@ -3,6 +3,9 @@ import createError from "http-errors";
 import Users from "../models/users.js";
 import express from "express";
 import bcrypt from "bcrypt";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import cloudinary from "../cloudinary.config.js";
+import multer from 'multer';
 import {
   signAccessToken,
   signRefreshToken,
@@ -48,6 +51,22 @@ const loginSchema = Joi.object({
     "any.required": `"password" là bắt buộc`,
   }),
 });
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'spacehub/img_user', // Thư mục trên Cloudinary
+    allowed_formats: ['jpg', 'png', 'webp', 'jfif'], // Định dạng được phép
+  },
+});
+
+// Khởi tạo multer với storage
+const upload = multer({ storage: storage });
+
+
+usersRouter.post('/upload-image', upload.single('imageUser'), userController.uploadImages);
+usersRouter.delete('/:id/remove-image', userController.removeUserImage);
+
 usersRouter.post("/login", async (req, res, next) => {
   try {
     // Validate dữ liệu nhập vào
