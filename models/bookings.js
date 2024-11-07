@@ -59,6 +59,11 @@ const bookingsSchema = new Schema(
       startTime: { type: String, required: false },
       endTime: { type: String, required: false },
     },
+    ownerApprovalStatus: {
+      type: String,
+      enum: ["pending", "accepted", "declined"],
+      default: "pending",
+    },
   },
   { timestamps: true }
 );
