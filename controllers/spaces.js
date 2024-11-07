@@ -1,5 +1,5 @@
 import cloudinary from "../cloudinary.config.js";
-import { spaceDao, appliancesDao } from "../dao/index.js";
+import { notificationDao, spaceDao } from "../dao/index.js";
 import CommunityStandards from "../models/communityStandards.js";
 import Spaces from "../models/spaces.js";
 import mongoose from "mongoose";
@@ -7,6 +7,7 @@ import Rules from "../models/rules.js";
 
 import pkg from 'cloudinary'; // Nhập package cloudinary dưới dạng mặc định
 import Appliances from "../models/appliances.js";
+import Users from "../models/users.js";
 const getAllSpacesApply = async (req, res) => {
   try {
     const allSpaces = await spaceDao.fetchAllSpacesApply();
@@ -125,7 +126,17 @@ const createNewSpace = async (req, res) => {
       locationPoint: {type: "Point", coordinates: latLng && latLng.length === 2 ? [latLng[1], latLng[0]] : null}
     };
     const newSpace = await Spaces.create(spaceData); // Tạo không đồng bộ
-
+    const adminList = await Users.find({ role: 1 });
+    const user = await Users.findById(spaceData.userId)
+    adminList.forEach((admin) => {
+      notificationDao.saveAndSendNotification(
+        admin._id.toString(),
+        `${user?.fullname} đã thêm mới space ${newSpace?.name}`,
+        newSpace.images && newSpace.images.length > 0
+          ? newSpace.images[0].url
+          : null, "/admin#manage-spaces"
+      );
+    });
     return res.status(201).json({ success: true, space: newSpace });
   } catch (error) {
     console.error("Error creating space:", error);

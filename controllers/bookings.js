@@ -2,6 +2,9 @@ import nodemailer from 'nodemailer';
 import BookingDAO from '../dao/Booking.js';
 import Bookings from '../models/bookings.js';
 import bookingDetail from '../models/bookingDetails.js';
+import { notificationDao } from "../dao/index.js";
+import Users from '../models/users.js';
+import Spaces from '../models/spaces.js';
 
 const sendEmailBookingCompleted = async (tenantEmail, bookingDetails) => {
   const transporter = nodemailer.createTransport({
@@ -98,6 +101,14 @@ export const createBooking = async (req, res) => {
     });
 
     await newBooking.save();
+
+    const space = await Spaces.findById(spaceId);
+    const user = await Users.findById(userId);
+    await notificationDao.saveAndSendNotification(
+      space.userId.toString(),
+      `${user.fullname} đã booking ${space.name}`,
+      space.images && space.images.length > 0 ? space.images[0].url : null
+    );
     res.status(201).json({ message: 'Booking created successfully', newBooking });
   } catch (error) {
     console.error("Error creating booking:", error);

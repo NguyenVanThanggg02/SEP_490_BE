@@ -6,6 +6,7 @@ import Appliances from "../models/appliances.js";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../cloudinary.config.js";
+import { notificationDao } from "../dao/index.js";
 
 
 
@@ -319,6 +320,15 @@ spaceRouter.put("/update/:postId", async (req, res, next) => {
 
     if (!postSpace) {
       return res.status(404).json({ message: "PostSpace not found" });
+    }
+
+    if (censorship === "Chấp nhận" || censorship === "Từ chối") {
+      await notificationDao.saveAndSendNotification(
+        postSpace.userId.toString(),
+        `${postSpace.name} đã được ${censorship.toLowerCase()}`,
+        postSpace.images && postSpace.images.length > 0 ? postSpace.images[0].url : null,
+        `/spaces/${postSpace._id.toString()}`
+      );
     }
 
     res.status(200).json(postSpace);
