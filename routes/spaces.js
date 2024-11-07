@@ -1,16 +1,7 @@
 import { spaceController } from "../controllers/index.js";
 import express from "express";
-
 import Spaces from "../models/spaces.js";
 import createError from "http-errors";
-import {
-  signAccessToken,
-  signRefreshToken,
-  verifyRefreshToken,
-  verifyAccessToken,
-} from "../helpers/jwt_helper.js";
-import Users from "../models/users.js";
-import Appliances from "../models/appliances.js";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../cloudinary.config.js";
@@ -35,8 +26,10 @@ spaceRouter.put("/:id/favorite", spaceController.changeFavoriteStatus);
 spaceRouter.get("/favorite", spaceController.getAllSpaceFavorites);
 spaceRouter.post('/', spaceController.createNewSpace);
 spaceRouter.post('/uploadImages', uploadCloud.array('images', 10), spaceController.uploadImages);
-
 spaceRouter.post('/removeImage', spaceController.removeImages);
+spaceRouter.delete('/delete/:id', spaceController.deleteSpace);
+spaceRouter.put('/update-censorship/:id', spaceController.updateSpaceCensorshipAndCommunityStandards);
+
 
 
 
@@ -61,8 +54,7 @@ spaceRouter.get("/filter", async (req, res, next) => {
     const { location, minPrice, maxPrice, category, areaMin, areaMax, applianceNames } = req.query;
 
     // Khởi tạo đối tượng filter rỗng
-    let filter = {};
-
+    let filter = { censorship: "Chấp nhận" };
     // Lọc theo địa chỉ
     if (location) {
       const rgx = (pattern) => new RegExp(`.*${pattern}.*`, "i"); // Không phân biệt chữ hoa/thường
@@ -280,6 +272,7 @@ spaceRouter.get("/:id", async (req, res, next) => {
       .populate("rulesId")
       .populate("appliancesId")
       .populate("categoriesId")
+      .populate("communityStandardsId")
       .exec();
     if (!space) {
       throw createError(400, "Space not found");
@@ -294,7 +287,9 @@ spaceRouter.get("/:id", async (req, res, next) => {
 spaceRouter.get("/for/:id", async (req, res, next) => {
   try {
     const userId = req.params.id;
-    const user = await Spaces.find({ userId: userId }).exec();
+    const user = await Spaces.find({ userId: userId })
+    .populate("userId")
+    .exec();
 
     if (!user) {
       return res.status(404).json({ message: "Space not found" });
@@ -306,25 +301,7 @@ spaceRouter.get("/for/:id", async (req, res, next) => {
     res.status(500).json({ message: "Đã xảy ra lỗi khi lấy thông tin " });
   }
 });
-// Từ chối post
-spaceRouter.put("/update-censorship/:id", async (req, res, next) => {
-  try {
-    const { communityStandardsId } = req.body;
-    const updatedPost = await Spaces.findByIdAndUpdate(
-      req.params.id,
-      { censorship: "Từ chối", communityStandardsId },
-      { new: true }
-    ).populate("communityStandardsId");
 
-    if (!updatedPost) {
-      return res.status(404).json({ message: "Không tìm thấy post" });
-    }
-
-    res.json(updatedPost);
-  } catch (error) {
-    next(error);
-  }
-});
 
 // chấp nhận post
 spaceRouter.put("/update/:postId", async (req, res, next) => {

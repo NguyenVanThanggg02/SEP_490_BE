@@ -1,7 +1,9 @@
 import cloudinary from "../cloudinary.config.js";
-import { spaceDao, appliancesDao } from "../dao/index.js";
+import { spaceDao } from "../dao/index.js";
+import CommunityStandards from "../models/communityStandards.js";
 import Spaces from "../models/spaces.js";
-import pkg from 'cloudinary'; // Nhập package cloudinary dưới dạng mặc định
+import mongoose from "mongoose";
+
 const getAllSpacesApply = async (req, res) => {
   try {
     const allSpaces = await spaceDao.fetchAllSpacesApply();
@@ -43,10 +45,9 @@ const getSimilarSpaces = async (req, res) => {
   }
 }
 
-// Tạo mới một không gian
-export const createNewSpace = async (req, res) => {
 
 
+const createNewSpace = async (req, res) => {
   try {
     const {
       name,
@@ -68,14 +69,13 @@ export const createNewSpace = async (req, res) => {
       isGoldenHour,
       goldenHourDetails,
       favorite,
-      latLng
+      latLng,
     } = req.body;
-
 
     let formattedImages = [];
     if (Array.isArray(images)) {
       formattedImages = images.map(img => ({
-        public_id: img.public_id, // Cần đảm bảo bạn gửi đúng public_id và url từ request
+        public_id: img.public_id,
         url: img.url
       }));
     } else if (images && images.public_id && images.url) {
@@ -84,6 +84,18 @@ export const createNewSpace = async (req, res) => {
         url: images.url
       }];
     }
+    const communityStandardsId = new mongoose.Types.ObjectId();
+
+    const newCommunityStandards = new CommunityStandards({
+      _id: communityStandardsId,
+      reasons: [],
+      customReason: []
+    });
+    await newCommunityStandards.save();
+
+
+
+
 
     const spaceData = {
       name,
@@ -104,12 +116,12 @@ export const createNewSpace = async (req, res) => {
       reportCount,
       isGoldenHour,
       goldenHourDetails,
+      communityStandardsId: communityStandardsId, // Gán ID đã tạo cho space
       favorite,
-      latLng
+      latLng,
+      locationPoint: {type: "Point", coordinates: latLng && latLng.length === 2 ? [latLng[1], latLng[0]] : null}
     };
-
-
-    const newSpace = await spaceDao.createSpace(spaceData);
+    const newSpace = await Spaces.create(spaceData); // Tạo không đồng bộ
 
     return res.status(201).json({ success: true, space: newSpace });
   } catch (error) {
@@ -117,7 +129,6 @@ export const createNewSpace = async (req, res) => {
     return res.status(500).json({ success: false, message: `Error creating space: ${error.message}` });
   }
 };
-
 
 
 const changeFavoriteStatus = async (req, res) => {
@@ -170,23 +181,62 @@ const removeImages = async (req, res) => {
 
 const uploadImages = async (req, res) => {
   try {
-      // Lấy thông tin ảnh từ req.files
-      const images = req.files.map(file => ({
-          url: file.path, // URL của ảnh đã được upload
-          public_id: file.filename, // public_id của ảnh
-      }));
+    // Lấy thông tin ảnh từ req.files
+    const images = req.files.map(file => ({
+      url: file.path, // URL của ảnh đã được upload
+      public_id: file.filename, // public_id của ảnh
+    }));
 
-      return res.status(200).json({
-          message: 'Images uploaded successfully',
-          images: images, // Trả về danh sách ảnh
-      });
+    return res.status(200).json({
+      message: 'Images uploaded successfully',
+      images: images, // Trả về danh sách ảnh
+    });
   } catch (error) {
-      console.error('Error uploading images:', error);
-      return res.status(500).json({ message: 'Server error', error });
+    console.error('Error uploading images:', error);
+    return res.status(500).json({ message: 'Server error', error });
+  }
+};
+
+const deleteSpace = async (req, res) => {
+  try {
+    const deleteSpace = await spaceDao.deleteSpace(req.params.id);
+    res.status(200).json(deleteSpace);
+  } catch (error) {
+    res.status(500).json({ error: error.toString() });
+    console.log('Failed to delete product');
   }
 };
 
 
+const updateSpaceCensorshipAndCommunityStandards = async (req, res) => {
+  try {
+
+    const spaceId = req.params.id;
+    const { censorship, reasons, customReason } = req.body;
+
+
+    // Cập nhật trạng thái censorship của space
+    const updatedSpace = await Spaces.findByIdAndUpdate(
+      spaceId,
+      { censorship, reasons, customReason }, // Các trường cần thiết
+      { new: true } // Trả về tài liệu đã cập nhật
+    ).populate("communityStandardsId");
+
+    // Cập nhật mảng reasons và customReason của communityStandards
+    const communityStandards = await CommunityStandards.findById(updatedSpace.communityStandardsId);
+    if (communityStandards) {
+      communityStandards.reasons = reasons; // Cập nhật lý do
+      communityStandards.customReason = customReason; // Cập nhật lý do tùy chỉnh
+      await communityStandards.save(); // Lưu thay đổi
+    }
+
+
+    return res.status(200).json({ success: true, space: updatedSpace });
+  } catch (error) {
+    console.error('Error updating space and community standards:', error);
+    return res.status(500).json({ success: false, message: 'Error updating space and community standards' });
+  }
+};
 
 
 export default {
@@ -197,5 +247,7 @@ export default {
   getAllSpaceFavorites,
   removeImages,
   uploadImages,
-  getAllSpacesApply
+  getAllSpacesApply,
+  deleteSpace,
+  updateSpaceCensorshipAndCommunityStandards
 }

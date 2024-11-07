@@ -3,6 +3,8 @@ import Users from "../models/users.js";
 import { userDao } from "../dao/index.js";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
+import cloudinary from "../cloudinary.config.js";
+
 const getAllUsers = async (req, res) =>{
   try {
     const allUsers = await userDao.fetchAllUsers();
@@ -28,13 +30,13 @@ const changePass = async (req, res) => {
     if (!username || !oldPassword || !newPassword) {
       return res
         .status(400)
-        .json({ status: false, message: "Missing required fields" });
+        .json({ status: false, message: "Thiếu các trường bắt buộc" });
     }
 
     const user = await Users.findOne({ username });
 
     if (!user) {
-      return res.status(404).json({ status: false, message: "User not found" });
+      return res.status(404).json({ status: false, message: "Không tìm thấy người dùng" });
     }
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
@@ -42,7 +44,7 @@ const changePass = async (req, res) => {
     if (!isMatch) {
       return res
         .status(400)
-        .json({ status: false, message: "Old password is incorrect" });
+        .json({ status: false, message: "Mật khẩu cũ không đúng" });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -53,9 +55,9 @@ const changePass = async (req, res) => {
 
     res
       .status(200)
-      .json({ status: true, message: "Password updated successfully" });
+      .json({ status: true, message: "Thay đổi mật khẩu thành công" });
   } catch (error) {
-    console.error("Error changing password:", error);
+    console.error("Lỗi trong khi thay đổi mật khẩu", error);
     res
       .status(500)
       .json({ status: false, message: "Server error", error: error.message });
@@ -67,7 +69,7 @@ const forgetPass = async (req, res) => {
     try {
       const user = await userDao.forgotPass(gmail);
       if (!user) {
-        return res.send({ Status: "User not found" });
+        return res.send({ Status: "Không tìm thấy người dùng" });
       }
       const token = jwt.sign({ id: user._id }, "jwt_secret_key", {
         expiresIn: "1d",
@@ -103,9 +105,9 @@ const forgetPass = async (req, res) => {
       transporter.sendMail(mailOptions, function (error, info) {
         if (error) {
           console.log(error);
-          return res.send({ Status: "Error sending email" });
+          return res.send({ Status: "Lỗi khi gửi mail" });
         } else {
-          return res.send({ Status: "Success" });
+          return res.send({ Status: "Thành công" });
         }
       });
     } catch (error) {
@@ -121,10 +123,70 @@ const forgetPass = async (req, res) => {
       res.status(500).json({ error: error.toString() });
     }
   };
+
+
+  const uploadImages = async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+  
+      const image = {
+        url: req.file.path, // URL của ảnh đã được upload
+        public_id: req.file.filename, // public_id của ảnh
+      };
+  
+      // Lấy userId từ request (giả sử bạn đã xác thực và có userId trong req.user)
+      const userId = req.body.userId; // Hoặc sử dụng cách khác để lấy userId
+  
+      // Cập nhật link ảnh vào trường avatar của user
+      await Users.findByIdAndUpdate(userId, { avatar: image.url }, { new: true });
+  
+      return res.status(200).json({
+        message: 'Images uploaded successfully',
+        images: image, // Trả về thông tin ảnh đã upload
+      });
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      return res.status(500).json({ message: 'Server error', error });
+    }
+  };
+  
+  
+  const removeUserImage = async (req, res) => {
+    try {
+      const userId = req.params.id; // Lấy ID người dùng từ params
+      const user = await Users.findById(userId);
+  
+      if (!user || !user.avatar) {
+        return res.status(404).json({ message: 'User or image not found' });
+      }
+  
+      const public_id = user.avatar.split('/').pop().split('.')[0]; // Lấy public_id từ URL ảnh
+  
+      // Xóa ảnh trên Cloudinary
+      const result = await cloudinary.v2.uploader.destroy(public_id);
+  
+      if (result.result === 'ok') {
+        // Cập nhật lại trường avatar trong cơ sở dữ liệu
+        await Users.findByIdAndUpdate(userId, { avatar: null }); // Hoặc giá trị mặc định nếu cần
+        return res.status(200).json({ message: 'Image deleted successfully' });
+      } else {
+        return res.status(400).json({ message: 'Failed to delete image', result });
+      }
+    } catch (error) {
+      console.error('Error deleting user image:', error);
+      return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  };
+  
+
 export default {
   getAllUsers,
   changePass,
   forgetPass,
   getUserByUserName,
-  updateUser
+  updateUser,
+  uploadImages,
+  removeUserImage
 };
