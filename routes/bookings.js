@@ -4,10 +4,9 @@ import BookingController from "../controllers/bookings.js";
 import bookingDetail from "../models/bookingDetails.js";
 import Spaces from "../models/spaces.js";
 
-
 const bookingRouter = express.Router();
 
-bookingRouter.get
+bookingRouter.get;
 
 //list danh sách booking
 bookingRouter.get("/", async (req, res, next) => {
@@ -24,16 +23,87 @@ bookingRouter.get("/", async (req, res, next) => {
     next(error);
   }
 });
+// lấy các đơn book của người cho thuê
 
+bookingRouter.get("/spaces/:userId", async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+
+    const bookings = await Bookings.find({})
+      .populate("spaceId")
+      .populate("userId")
+      .exec();
+
+    const filteredBookings = bookings.filter(
+      (booking) => booking.spaceId.userId.toString() === userId
+    );
+
+    if (filteredBookings.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No bookings found for this user in their spaces" });
+    }
+
+    res.json(filteredBookings);
+  } catch (error) {
+    next(error);
+  }
+});
+
+//Duyệt booking của người dùng muốn thuê...
+
+bookingRouter.put("/updatestatus/:id", async (req, res, next) => {
+  try {
+    const { ownerApprovalStatus, cancelReason } = req.body;
+
+    // Validate the ownerApprovalStatus value
+    if (!["pending", "accepted", "declined"].includes(ownerApprovalStatus)) {
+      return res.status(400).json({ message: "Invalid owner approval status" });
+    }
+
+    // Prepare the update data
+    const updateData = {
+      ownerApprovalStatus,
+    };
+
+    // If the status is declined, add the cancelReason
+    if (ownerApprovalStatus === "declined") {
+      updateData.cancelReason = cancelReason;
+    }
+
+    const updatedBooking = await Bookings.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    )
+      .populate("userId")
+      .populate("spaceId");
+
+    if (!updatedBooking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    res.json(updatedBooking);
+  } catch (error) {
+    next(error);
+  }
+});
 // Endpoint kiểm tra khung giờ khả dụng
-bookingRouter.post('/check-hour-availability', BookingController.checkHourAvailability);
-bookingRouter.post('/check-day-availability', BookingController.checkDayAvailability);
+bookingRouter.post(
+  "/check-hour-availability",
+  BookingController.checkHourAvailability
+);
+bookingRouter.post(
+  "/check-day-availability",
+  BookingController.checkDayAvailability
+);
 
 // Endpoint để tạo đặt phòng mới
-bookingRouter.post('/create', BookingController.createBooking);
-bookingRouter.get("/bookingByUserId/:id", BookingController.getListBookingOfUser);
-
-
+bookingRouter.post("/create", BookingController.createBooking);
+bookingRouter.get(
+  "/bookingByUserId/:id",
+  BookingController.getListBookingOfUser
+);
 
 // Cập nhật trạng thái booking và lý do nếu chuyển thành 'cancel' api cho user
 bookingRouter.put("/update-status/:id", async (req, res, next) => {
@@ -45,7 +115,10 @@ bookingRouter.put("/update-status/:id", async (req, res, next) => {
 
     const updatedBooking = await Bookings.findByIdAndUpdate(
       req.params.id,
-      { status, cancelReason: status === "canceled" ? cancelReason : undefined }, // Cập nhật cancelReason chỉ khi status là "canceled"
+      {
+        status,
+        cancelReason: status === "canceled" ? cancelReason : undefined,
+      }, // Cập nhật cancelReason chỉ khi status là "canceled"
       { new: true }
     ).populate("userId");
 
@@ -58,7 +131,10 @@ bookingRouter.put("/update-status/:id", async (req, res, next) => {
       const tenantEmail = updatedBooking.userId.gmail; // Giả sử bạn có trường email trong user
       console.log(tenantEmail);
 
-      await sendEmailBookingCompleted.sendEmailBookingCompleted(tenantEmail, updatedBooking);
+      await sendEmailBookingCompleted.sendEmailBookingCompleted(
+        tenantEmail,
+        updatedBooking
+      );
     }
 
     res.json(updatedBooking);
@@ -66,7 +142,6 @@ bookingRouter.put("/update-status/:id", async (req, res, next) => {
     next(error);
   }
 });
-
 
 // api lấy 3 spaces có lượt book nhiều nhất theo quantity
 bookingRouter.get("/top-spaces", async (req, res) => {
@@ -126,4 +201,4 @@ bookingRouter.get("/top-spaces", async (req, res) => {
   }
 });
 
-export default bookingRouter  
+export default bookingRouter;

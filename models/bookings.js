@@ -12,25 +12,29 @@ const bookingsSchema = new Schema(
       ref: "spaces",
       required: true,
     },
-    startDate: { // Trước là checkIn
+    startDate: {
+      // Previously checkIn
       type: Date,
       required: true,
     },
-    endDate: { // Trước là checkOut
+    endDate: {
+      // Previously checkOut
       type: Date,
       required: true,
     },
-    rentalType: { // Thêm trường mới để xác định loại hình thuê
+    rentalType: {
+      // New field to specify rental type
       type: String,
       enum: ["hour", "day", "week", "month"],
       required: true,
     },
-    selectedSlots: [ // Để lưu trữ các khung giờ khi thuê theo giờ
+    selectedSlots: [
+      // To store time slots when renting by hour
       {
         date: { type: Date },
         startTime: { type: String },
-        endTime: { type: String }
-      }
+        endTime: { type: String },
+      },
     ],
     selectedDates: [Date],
     status: {
@@ -44,8 +48,8 @@ const bookingsSchema = new Schema(
         ref: "bookingDetails",
       },
     ],
-    totalAmount:{
-      type: String
+    totalAmount: {
+      type: String,
     },
     notes: {
       type: String,
@@ -58,6 +62,11 @@ const bookingsSchema = new Schema(
     timeSlot: {
       startTime: { type: String, required: false },
       endTime: { type: String, required: false },
+    },
+    ownerApprovalStatus: {
+      type: String,
+      enum: ["pending", "accepted", "declined"],
+      default: "pending",
     },
   },
   { timestamps: true }
