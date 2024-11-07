@@ -2,7 +2,6 @@ import { spaceController } from "../controllers/index.js";
 import express from "express";
 import Spaces from "../models/spaces.js";
 import createError from "http-errors";
-import Appliances from "../models/appliances.js";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../cloudinary.config.js";
