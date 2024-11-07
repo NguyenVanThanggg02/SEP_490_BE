@@ -43,12 +43,27 @@ export const createSpace = async (spaceData) => {
   try {
     console.log(spaceData)
     console.log({...spaceData, locationPoint: {type: "Point", coordinates: spaceData.latLng ? [spaceData.latLng[1], spaceData.latLng[0]] : null}})
-    const newSpace = new Spaces({...spaceData, locationPoint: {type: "Point", coordinates: spaceData.latLng ? [spaceData.latLng[1], spaceData.latLng[0]] : null}});
+    const newSpace = new Spaces({
+      ...spaceData,
+       locationPoint: {type: "Point", coordinates: spaceData.latLng 
+        ? [spaceData.latLng[1], spaceData.latLng[0]] 
+        : null}});
     await newSpace.save();
     return newSpace;
   } catch (error) {
     console.error("Error saving space to database:", error);
     throw new Error('Error creating space in DAO');
+  }
+};
+
+export const updateSpace = async (id, spaceData) => {
+  try {
+    console.log("updateSpace", spaceData);
+    const updatedSpace = await Spaces.findByIdAndUpdate(id, spaceData).lean();
+    return updatedSpace;
+  } catch (error) {
+    console.error("Error updating space to database:", error);
+    throw new Error("Error updating space in DAO");
   }
 };
 
@@ -60,4 +75,5 @@ const deleteSpace = async (id) => {
     throw new Error(error.toString());
   }
 };
-export default { fetchAllSpaces, fetchSimilarSpaces, createSpace, fetchAllSpaceFavorite, fetchAllSpacesApply, deleteSpace }
+
+export default { fetchAllSpaces, fetchSimilarSpaces, createSpace, fetchAllSpaceFavorite, fetchAllSpacesApply, deleteSpace, updateSpace }

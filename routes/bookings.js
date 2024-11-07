@@ -27,6 +27,74 @@ bookingRouter.get("/", async (req, res, next) => {
   }
 });
 
+
+// lấy các đơn book của người cho thuê
+
+bookingRouter.get("/spaces/:userId", async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+
+    const bookings = await Bookings.find({})
+      .populate("spaceId")
+      .populate("userId")
+      .exec();
+
+    const filteredBookings = bookings.filter(
+      (booking) => booking.spaceId.userId.toString() === userId
+    );
+
+    if (filteredBookings.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No bookings found for this user in their spaces" });
+    }
+
+    res.json(filteredBookings);
+  } catch (error) {
+    next(error);
+  }
+});
+
+//Duyệt booking của người dùng muốn thuê...
+
+bookingRouter.put("/updatestatus/:id", async (req, res, next) => {
+  try {
+    const { ownerApprovalStatus, cancelReason } = req.body;
+
+    // Validate the ownerApprovalStatus value
+    if (!["pending", "accepted", "declined"].includes(ownerApprovalStatus)) {
+      return res.status(400).json({ message: "Invalid owner approval status" });
+    }
+
+    // Prepare the update data
+    const updateData = {
+      ownerApprovalStatus,
+    };
+
+    // If the status is declined, add the cancelReason
+    if (ownerApprovalStatus === "declined") {
+      updateData.cancelReason = cancelReason;
+    }
+
+    const updatedBooking = await Bookings.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    )
+      .populate("userId")
+      .populate("spaceId");
+
+    if (!updatedBooking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    res.json(updatedBooking);
+  } catch (error) {
+    next(error);
+  }
+});
+
+
 // Endpoint kiểm tra khung giờ khả dụng
 bookingRouter.post('/check-hour-availability', BookingController.checkHourAvailability);
 bookingRouter.post('/check-day-availability', BookingController.checkDayAvailability);
@@ -124,18 +192,17 @@ bookingRouter.get("/top-spaces", async (req, res) => {
     console.log(error.message);
     return res
       .status(500)
-      .json({ message: "Error retrieving the top spaces" });
+      .json({ message: "Error retrieving the top products" });
   }
 });
+
 
 bookingRouter.get("/near-spaces", async (req, res) => {
   try {
     const {lat, lng} = req.query;
     let result = []
-    const query = { censorship: "Chấp nhận" };
     if (lat && lng) {
       result = await Spaces.find({
-        ...query,
         locationPoint: {
               $near: {
                   $geometry: {
@@ -147,7 +214,7 @@ bookingRouter.get("/near-spaces", async (req, res) => {
       })
       .limit(3);
     } else {
-      result = await Spaces.find(query)
+      result = await Spaces.find()
         .sort({ updatedAt: -1 }) 
         .limit(3);
     }
@@ -176,7 +243,7 @@ bookingRouter.get("/near-spaces", async (req, res) => {
     console.log(error.message);
     return res
       .status(500)
-      .json({ message: "Lỗi khi lấy địa điểm gần nhất" });
+      .json({ message: "Error retrieving the top products" });
   }
 });
 

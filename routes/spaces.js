@@ -31,8 +31,6 @@ spaceRouter.delete('/delete/:id', spaceController.deleteSpace);
 spaceRouter.put('/update-censorship/:id', spaceController.updateSpaceCensorshipAndCommunityStandards);
 
 
-
-
 // tim kiem space
 spaceRouter.get("/search/:name", async (req, res, next) => {
   try {
@@ -125,6 +123,9 @@ spaceRouter.get("/filter", async (req, res, next) => {
 
 // get theo id
 spaceRouter.get("/cate/:id", spaceController.getSimilarSpaces);
+
+// update space
+spaceRouter.post("/update/:id", spaceController.updateSpace);
 
 // so sánh
 spaceRouter.get("/compare-spaces-differences", async (req, res) => {
