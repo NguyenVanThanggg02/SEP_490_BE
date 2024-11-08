@@ -308,10 +308,8 @@ const deleteSpace = async (req, res) => {
 
 const updateSpaceCensorshipAndCommunityStandards = async (req, res) => {
   try {
-
     const spaceId = req.params.id;
     const { censorship, reasons, customReason } = req.body;
-
 
     // Cập nhật trạng thái censorship của space
     const updatedSpace = await Spaces.findByIdAndUpdate(
@@ -328,6 +326,16 @@ const updateSpaceCensorshipAndCommunityStandards = async (req, res) => {
       await communityStandards.save(); // Lưu thay đổi
     }
 
+    // Nếu censorship là "Từ chối", gửi thông báo
+    if (censorship === "Từ chối") {
+      // Gửi thông báo cho người dùng
+      await notificationDao.saveAndSendNotification(
+        updatedSpace.userId.toString(),  // ID người dùng của không gian
+        `${updatedSpace.name} đã bị ${censorship.toLowerCase()}`,  // Nội dung thông báo
+        updatedSpace.images && updatedSpace.images.length > 0 ? updatedSpace.images[0].url : null,  // Hình ảnh (nếu có)
+        `/spaces/${updatedSpace._id.toString()}`  // Liên kết đến không gian
+      );
+    }
 
     return res.status(200).json({ success: true, space: updatedSpace });
   } catch (error) {
