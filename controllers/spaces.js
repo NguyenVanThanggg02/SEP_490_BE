@@ -161,10 +161,10 @@ const updateSpace = async (req, res) => {
       appliancesId,
       isGoldenHour,
       goldenHourDetails,
-      userId // Thêm userId vào đây
+      userId 
     } = req.body;
 
-    console.log("Received userId:", userId); // Kiểm tra xem userId có được truyền vào không
+    console.log("Received userId:", userId); 
 
     let formattedImages = [];
     if (Array.isArray(images)) {
@@ -219,10 +219,9 @@ const updateSpace = async (req, res) => {
 
     const updatedSpace = await spaceDao.updateSpace(id, spaceData);
     
-    // Thêm phần thông báo cho quản trị viên
     const adminList = await Users.find({ role: 1 });
-    const user = await Users.findById(userId); // Tìm user dựa vào userId
-    console.log("Fetched user:", user); // Kiểm tra kết quả của truy vấn user
+    const user = await Users.findById(userId); 
+    console.log("Fetched user:", user); 
 
     if (!user) {
       return res.status(404).json({
