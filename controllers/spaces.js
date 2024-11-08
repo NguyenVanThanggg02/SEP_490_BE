@@ -161,12 +161,15 @@ const updateSpace = async (req, res) => {
       appliancesId,
       isGoldenHour,
       goldenHourDetails,
+      userId // Thêm userId vào đây
     } = req.body;
+
+    console.log("Received userId:", userId); // Kiểm tra xem userId có được truyền vào không
 
     let formattedImages = [];
     if (Array.isArray(images)) {
       formattedImages = images.map((img) => ({
-        public_id: img.public_id, // Cần đảm bảo bạn gửi đúng public_id và url từ request
+        public_id: img.public_id,
         url: img.url,
       }));
     } else if (images && images.public_id && images.url) {
@@ -184,12 +187,11 @@ const updateSpace = async (req, res) => {
       pricePerDay,
       pricePerWeek,
       pricePerMonth,
-      images,
+      images: formattedImages,
       location,
       locationPoint: {
         type: "Point",
-        coordinates:
-          latLng && latLng.length === 2 ? [latLng[1], latLng[0]] : null,
+        coordinates: latLng && latLng.length === 2 ? [latLng[1], latLng[0]] : null,
       },
       latLng,
       categoriesId,
@@ -198,14 +200,13 @@ const updateSpace = async (req, res) => {
       censorship: "Chờ duyệt",
     };
 
-    const updatedRules = await Rules.findByIdAndUpdate(rulesId._id, {
-      ...rulesId,
-    }).lean();
+    const updatedRules = await Rules.findByIdAndUpdate(rulesId._id, { ...rulesId }).lean();
     if (!updatedRules)
       return res.status(404).json({
         success: false,
         message: `Error updating space: rule not found`,
       });
+
     const updatedAppliances = await Appliances.findByIdAndUpdate(
       appliancesId._id,
       { ...appliancesId }
@@ -217,8 +218,30 @@ const updateSpace = async (req, res) => {
       });
 
     const updatedSpace = await spaceDao.updateSpace(id, spaceData);
-    console.log("updatedSpace", updatedSpace, updatedAppliances, updatedRules);
+    
+    // Thêm phần thông báo cho quản trị viên
+    const adminList = await Users.find({ role: 1 });
+    const user = await Users.findById(userId); // Tìm user dựa vào userId
+    console.log("Fetched user:", user); // Kiểm tra kết quả của truy vấn user
 
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: `Error: User not found with id ${userId}`,
+      });
+    }
+
+    adminList.forEach((admin) => {
+      notificationDao.saveAndSendNotification(
+        admin._id.toString(),
+        `${user.fullname} đã cập nhật không gian ${updatedSpace?.name}`,
+        updatedSpace.images && updatedSpace.images.length > 0
+          ? updatedSpace.images[0].url
+          : null, "/admin#manage-spaces"
+      );
+    });
+
+    console.log("updatedSpace", updatedSpace, updatedAppliances, updatedRules);
     return res.status(201).json({ success: true, space: updatedSpace });
   } catch (error) {
     console.error("Error updating space:", error);
@@ -228,6 +251,8 @@ const updateSpace = async (req, res) => {
     });
   }
 };
+
+
 
 const changeFavoriteStatus = async (req, res) => {
   try {
