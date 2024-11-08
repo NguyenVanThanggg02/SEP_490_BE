@@ -2,14 +2,15 @@ import mongoose, { Schema } from "mongoose";
 
 const communityStandardsSchema = new Schema(
   {
-    reason: {
-      type: String,
+    reasons: {
+      type: [String],
+      required: true,
     },
-    customeCommunityStandards: {
-      type: String,
+    customReason: {
+      type: [String],
+      required: false,
     },
   },
-
   {
     timestamps: true,
   }

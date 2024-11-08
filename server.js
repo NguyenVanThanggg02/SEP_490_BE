@@ -21,9 +21,11 @@ import {
   chatRouter,
   messRouter,
   communityStandardsRouter,
+  notificationsRouter
 } from "./routes/index.js";
 import { Server } from "socket.io"; // Import socket.io
 import { createServer } from "http"; // Import createServer cho việc khởi tạo HTTP server
+import { initSocket } from "./helpers/socket.io.js";
 
 dotenv.config();
 
@@ -52,6 +54,7 @@ app.use("/userNeed", userNeedRouter);
 app.use("/chat", chatRouter);
 app.use("/message", messRouter);
 app.use("/communityStandards", communityStandardsRouter);
+app.use("/notification", notificationsRouter)
 
 // Middleware để xử lý CORS headers
 app.use((req, res, next) => {
@@ -63,13 +66,23 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((err, req, res, next) => {
+  const errorMessage = err.message;
+  const statusCode = err.statusCode || 500;
+  const stack = err.stack;
+
+  res
+    .status(statusCode)
+    .json({ message: errorMessage, error: errorMessage, statusCode, stack });
+});
+
 const Port = process.env.PORT || 9999;
 
 // Tạo HTTP server từ Express app
 const server = createServer(app);
 
 // Thiết lập Socket.io sử dụng HTTP server
-const io = new Server(server, {
+const io = new initSocket(server, {
   cors: {
     origin: "http://localhost:3000", // Allow frontend từ localhost:3000
   },

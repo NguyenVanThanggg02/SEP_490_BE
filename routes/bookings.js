@@ -3,6 +3,8 @@ import Bookings from "../models/bookings.js";
 import BookingController from "../controllers/bookings.js";
 import bookingDetail from "../models/bookingDetails.js";
 import Spaces from "../models/spaces.js";
+import axios from "axios";
+import { mapboxToken } from "../helpers/constants.js";
 
 
 const bookingRouter = express.Router();
@@ -122,8 +124,132 @@ bookingRouter.get("/top-spaces", async (req, res) => {
     console.log(error.message);
     return res
       .status(500)
-      .json({ message: "Error retrieving the top products" });
+      .json({ message: "Error retrieving the top spaces" });
   }
 });
+
+bookingRouter.get("/near-spaces", async (req, res) => {
+  try {
+    const {lat, lng} = req.query;
+    let result = []
+    const query = { censorship: "Chấp nhận" };
+    if (lat && lng) {
+      result = await Spaces.find({
+        ...query,
+        locationPoint: {
+              $near: {
+                  $geometry: {
+                      type: "Point",
+                      coordinates: [lng, lat]
+                  }
+              }
+          }
+      })
+      .limit(3);
+    } else {
+      result = await Spaces.find(query)
+        .sort({ updatedAt: -1 }) 
+        .limit(3);
+    }
+
+    if (result.length === 0) {
+      return res.status(200).json([]);
+    }
+    let resData = []
+      for (let i = 0; i < result.length; i++) {
+        resData.push({_id: result[i]._id, images: result[i].images, name: result[i].name, location: result[i].location, pricePerHour: result[i].pricePerHour})
+        try {      
+        const res = await axios.get(`https://api.mapbox.com/directions/v5/mapbox/driving/${lng},${lat};${result[i].locationPoint.coordinates[0]},${result[i].locationPoint.coordinates[1]}`, {
+          params: {
+            access_token: mapboxToken
+          }
+        })
+        if (res?.data?.routes && res.data.routes.length > 0 && res.data.routes[0].distance) {
+          resData[i].distance = res.data.routes[0].distance >= 1000 ? `${Math.floor(res.data.routes[0].distance/1000)}km` : `${res.data.routes[0].distance}m`;
+        }
+      } catch (error) {
+        console.log(error.message);
+      }
+      }
+    return res.status(200).json(resData);
+  } catch (error) {
+    console.log(error.message);
+    return res
+      .status(500)
+      .json({ message: "Lỗi khi lấy địa điểm gần nhất" });
+  }
+});
+
+// huỷ lịch book
+bookingRouter.put("/:id/cancel", async (req, res) => {
+  try {
+    const booking = await Bookings.findById(req.params.id)
+      .populate("userId")
+      .populate("spaceId");
+
+    if (!booking) {
+      return res.status(404).json({ message: "Không tìm thấy booking" });
+    }
+
+    // Kiểm tra nếu trạng thái hoặc trạng thái phê duyệt của chủ sở hữu ngừng hủy
+    if (
+      booking.ownerApprovalStatus === "declined" ||
+      booking.status === "canceled"
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Không thể hủy booking ở trạng thái này" });
+    }
+
+    // Kiểm tra theo rentalType
+    const currentDate = new Date();
+    const startDate = new Date(booking.startDate); // Lấy thời gian bắt đầu của booking
+    const timeDifference = startDate - currentDate; // Tính sự chênh lệch thời gian
+
+    if (["hour", "day"].includes(booking.rentalType)) {
+      // Nếu rentalType là "hour" hoặc "day", hủy trước 24 giờ
+      if (timeDifference < 24 * 60 * 60 * 1000) { // 24 giờ tính bằng mili giây
+        return res.status(400).json({ message: "Không thể hủy khi còn dưới 24 giờ" });
+      }
+    }  
+    else if (booking.rentalType === "week") {
+      const currentDate = new Date();
+      const startDate = new Date(booking.startDate);
+      const timeDifference = startDate - currentDate; // Tính sự chênh lệch thời gian
+    
+      // Kiểm tra nếu chưa sử dụng ngày nào (chưa đến ngày bắt đầu)
+      if (timeDifference > 0) {
+        // Chưa đến ngày bắt đầu, có thể hủy booking
+        return res.json({ message: "Booking có thể hủy" });
+      }
+    
+      // Kiểm tra nếu đã sử dụng hơn 3 ngày
+      if (Math.abs(timeDifference) > 3 * 24 * 60 * 60 * 1000) { // Đã sử dụng hơn 3 ngày
+        return res.status(400).json({ message: "Không thể hủy booking khi đã sử dụng hơn 3 ngày" });
+      }
+    }
+    
+    
+    else if (booking.rentalType === "month") {
+       const timeUsed = timeDifference / (1000 * 60 * 60 * 24); 
+       // Kiểm tra nếu đã sử dụng quá 2 tuần (14 ngày)
+        if (timeUsed > 14) {
+          return res.status(400).json({ message: "Không thể hủy khi đã sử dụng quá 2 tuần" });
+        }
+    }
+
+    // Tiến hành hủy booking
+    booking.status = "canceled";
+    booking.cancelReason = req.body.cancelReason; // Chọn lý do hủy
+    booking.totalAmount = 0; // Đặt lại tổng số tiền
+    await booking.save();
+
+    return res.json({ message: "Booking đã được hủy thành công" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Lỗi khi hủy booking" });
+  }
+});
+
 
 export default bookingRouter  
