@@ -3,33 +3,30 @@ import Spaces from "../models/spaces.js";
 
 const fetchAllReports = async () => {
   try {
-    const allReports = await Reports.find({})
-    .populate("reasonId")
-    // .populate("userId")
-    // .populate("spaceId")
-    .exec();
-    return allReports;
+    return await Reports.find({})
+      .populate("reasonId")
+      // .populate("userId")
+      // .populate("spaceId")
+      .exec();
   } catch (error) {
-    throw new Error(error.message);
+    throw new Error(`Failed to fetch reports: ${error.message}`);
   }
 };
 
 const createReports = async (reasonId, userId, spaceId) => {
   try {
-    const createReport = await Reports.create({
-      reasonId,
-      userId,
-      spaceId,
-    });
+    const newReport = await Reports.create({ reasonId, userId, spaceId });
+
     await Spaces.findByIdAndUpdate(
       spaceId,
       { $inc: { reportCount: 1 } },
       { new: true }
     );
-    return createReport;
+
+    return newReport;
   } catch (error) {
-    throw new Error(error.toString());
+    throw new Error(`Failed to create report: ${error.message}`);
   }
 };
 
-export default { createReports, fetchAllReports };
+export default { fetchAllReports, createReports };
