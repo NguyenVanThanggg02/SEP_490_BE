@@ -1,43 +1,63 @@
-import Spaces from "../models/spaces.js";
-
-const fetchAllSpaces = async () => {
+// Function to fetch a space by its ID
+const fetchSpaceById = async (id) => {
   try {
-    return await Spaces.find({}).populate("appliancesId").populate("userId").exec()
+    return await Spaces.findById(id)
+      .populate("appliancesId")
+      .populate("userId")
+      .populate("categoriesId")
+      .populate("reviews")
+      .exec();
   } catch (error) {
     throw new Error(error.toString());
-  }
-}
-
-const fetchAllSpaceFavorite = async () => {
-  try {
-    return await Spaces.find({ favorite: true }).populate("appliancesId").exec()
-  } catch (error) {
-    throw new Error(error.toString());
-  }
-}
-
-const fetchSimilarSpaces = async (id) => {
-  try {
-    const spaceId = await Spaces.find({ categoriesId: id })
-      // .populate('rules')
-      // .populate('appliances')
-      .populate('categoriesId')
-      .populate('reviews')
-    return spaceId
-  } catch (error) {
-    throw new Error(error.toString());
-  }
-}
-
-
-export const createSpace = async (spaceData) => {
-  try {
-    const newSpace = new Spaces(spaceData);
-    await newSpace.save();
-    return newSpace;
-  } catch (error) {
-    console.error("Error saving space to database:", error); // Log lỗi chi tiết
-    throw new Error('Error creating space in DAO');
   }
 };
-export default { fetchAllSpaces, fetchSimilarSpaces, createSpace,fetchAllSpaceFavorite }
+
+// Function to update a space by ID
+const updateSpace = async (id, spaceData) => {
+  try {
+    return await Spaces.findByIdAndUpdate(id, spaceData, { new: true })
+      .populate("appliancesId")
+      .populate("userId")
+      .exec();
+  } catch (error) {
+    console.error("Error updating space:", error);
+    throw new Error("Error updating space in DAO");
+  }
+};
+
+// Function to delete a space by ID
+const deleteSpace = async (id) => {
+  try {
+    const deletedSpace = await Spaces.findByIdAndDelete(id);
+    if (!deletedSpace) {
+      throw new Error("Space not found");
+    }
+    return deletedSpace;
+  } catch (error) {
+    console.error("Error deleting space:", error);
+    throw new Error("Error deleting space in DAO");
+  }
+};
+
+// Function to find spaces by a specific user
+const fetchSpacesByUserId = async (userId) => {
+  try {
+    return await Spaces.find({ userId })
+      .populate("appliancesId")
+      .populate("categoriesId")
+      .exec();
+  } catch (error) {
+    throw new Error(error.toString());
+  }
+};
+
+export default {
+  fetchAllSpaces,
+  fetchAllSpaceFavorite,
+  fetchSimilarSpaces,
+  createSpace,
+  fetchSpaceById,
+  updateSpace,
+  deleteSpace,
+  fetchSpacesByUserId,
+};
