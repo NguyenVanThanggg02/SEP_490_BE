@@ -68,6 +68,11 @@ const usersSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    balanceAmount: {
+      type: Number,
+      required: true,
+      default: 0
+    }
   },
   {
     timestamps: true,

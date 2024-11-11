@@ -16,6 +16,7 @@ import communityStandardsRouter from "./communityStandards.js";
 import chatRouter from "./chat.js";
 import messRouter from "./mess.js";
 import {notificationsRouter} from "./notifications.js";
+import {transactionRouter} from "./transaction.js";
 
 export {
   userRouter,
@@ -35,5 +36,6 @@ export {
   communityStandardsRouter,
   chatRouter,
   messRouter,
-  notificationsRouter
+  notificationsRouter,
+  transactionRouter
 };
