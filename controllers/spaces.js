@@ -37,7 +37,7 @@ const getSimilarSpaces = async (req, res) => {
   try {
     const similarSpaces = req.params.id
     const spaces = await spaceDao.fetchSimilarSpaces(similarSpaces)
-    if (spaces) {
+    if (spaces.length > 0) {
       res.status(200).json(spaces)
     } else {
       res.status(400).json({ message: 'not found' })
@@ -46,7 +46,6 @@ const getSimilarSpaces = async (req, res) => {
     res.status(500).json({ message: error.toString() })
   }
 }
-
 
 
 const createNewSpace = async (req, res) => {
@@ -74,6 +73,14 @@ const createNewSpace = async (req, res) => {
       latLng,
     } = req.body;
 
+    // Kiểm tra các trường bắt buộc
+    if (!name || !description || !location || !area || !rulesId || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields',
+      });
+    }
+
     let formattedImages = [];
     if (Array.isArray(images)) {
       formattedImages = images.map(img => ({
@@ -95,10 +102,6 @@ const createNewSpace = async (req, res) => {
     });
     await newCommunityStandards.save();
 
-
-
-
-
     const spaceData = {
       name,
       description,
@@ -118,19 +121,21 @@ const createNewSpace = async (req, res) => {
       reportCount,
       isGoldenHour,
       goldenHourDetails,
-      communityStandardsId: communityStandardsId, // Gán ID đã tạo cho space
+      communityStandardsId: communityStandardsId, // Gán ID cho space
       favorite,
       latLng,
       locationPoint: {type: "Point", coordinates: latLng && latLng.length === 2 ? [latLng[1], latLng[0]] : null}
     };
-    const newSpace = await Spaces.create(spaceData); // Tạo không đồng bộ
+
+    const newSpace = await Spaces.create(spaceData); // Tạo không gian mới
 
     return res.status(201).json({ success: true, space: newSpace });
   } catch (error) {
-    console.error("Error creating space:", error);
-    return res.status(500).json({ success: false, message: `Error creating space: ${error.message}` });
-  }
+    console.error('Error:', error);
+    res.status(500).json({ success: false, message: `Error creating space: ${error.message}` });
+  }  
 };
+
 
 const updateSpace = async (req, res) => {
   const { id } = req.params;
@@ -216,27 +221,23 @@ const updateSpace = async (req, res) => {
     });
   }
 };
-
 const changeFavoriteStatus = async (req, res) => {
   try {
     const spaceId = req.params.id;
 
-    // Tìm không gian theo ID
-    const space = await Spaces.findById(spaceId);
+    // Tìm không gian qua DAO
+    const space = await spaceDao.getSpaceById(spaceId);
 
     if (!space) {
       return res.status(404).json({ message: "Không gian không tồn tại" });
     }
 
-    // Đảo ngược trạng thái của favorite
-    space.favorite = !space.favorite;
-
-    // Lưu lại thay đổi
-    await space.save();
+    // Đảo ngược trạng thái yêu thích qua DAO
+    const updatedSpace = await spaceDao.updateFavoriteStatus(space);
 
     return res.status(200).json({
       message: "Đã thay đổi trạng thái yêu thích thành công",
-      favorite: space.favorite,
+      favorite: updatedSpace.favorite,
     });
   } catch (error) {
     return res.status(500).json({
@@ -245,6 +246,8 @@ const changeFavoriteStatus = async (req, res) => {
     });
   }
 };
+
+
 
 const removeImages = async (req, res) => {
   try {
@@ -285,13 +288,20 @@ const uploadImages = async (req, res) => {
 
 const deleteSpace = async (req, res) => {
   try {
-    const deleteSpace = await spaceDao.deleteSpace(req.params.id);
-    res.status(200).json(deleteSpace);
+    const deletedSpace = await spaceDao.deleteSpace(req.params.id);
+
+    if (!deletedSpace) {
+      return res.status(404).json({ message: 'Space not found' });
+    }
+
+    res.status(200).json(deletedSpace);
   } catch (error) {
-    res.status(500).json({ error: error.toString() });
-    console.log('Failed to delete product');
+    // Khi gặp lỗi, trả về mã lỗi 500 và thông báo lỗi
+    console.log('Failed to delete space:', error);  // Để dễ dàng debug
+    return res.status(500).json({ error: error.message });
   }
 };
+
 
 
 const updateSpaceCensorshipAndCommunityStandards = async (req, res) => {

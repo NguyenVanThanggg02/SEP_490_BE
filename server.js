@@ -16,7 +16,6 @@ import {
   appliancesRouter,
   reportRouter,
   reasonsRouter,
-  messageRouter,
   userNeedRouter,
   chatRouter,
   messRouter,

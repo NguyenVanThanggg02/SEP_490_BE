@@ -37,12 +37,15 @@ const fetchSimilarSpaces = async (id) => {
     throw new Error(error.toString());
   }
 }
+const createCommunityStandards = async (communityStandardsData) => {
+  const newCommunityStandards = new CommunityStandards(communityStandardsData);
+  return await newCommunityStandards.save();
+};
+
 
 
 export const createSpace = async (spaceData) => {
   try {
-    console.log(spaceData)
-    console.log({...spaceData, locationPoint: {type: "Point", coordinates: spaceData.latLng ? [spaceData.latLng[1], spaceData.latLng[0]] : null}})
     const newSpace = new Spaces({
       ...spaceData,
        locationPoint: {type: "Point", coordinates: spaceData.latLng 
@@ -76,4 +79,13 @@ const deleteSpace = async (id) => {
   }
 };
 
-export default { fetchAllSpaces, fetchSimilarSpaces, createSpace, fetchAllSpaceFavorite, fetchAllSpacesApply, deleteSpace, updateSpace }
+const getSpaceById = async (spaceId) => {
+  return await Spaces.findById(spaceId);
+};
+
+const updateFavoriteStatus = async (space) => {
+  space.favorite = !space.favorite;
+  return await space.save();
+};
+
+export default { fetchAllSpaces, fetchSimilarSpaces, createSpace, fetchAllSpaceFavorite, fetchAllSpacesApply, deleteSpace, updateSpace,getSpaceById,updateFavoriteStatus,createCommunityStandards }
