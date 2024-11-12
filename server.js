@@ -3,6 +3,8 @@ import * as dotenv from "dotenv";
 import express from "express";
 import { json } from "express"; // Import json từ express
 import connectDB from "./database.js";
+import cron from "node-cron";
+
 import {
   userRouter,
   spaceRouter,
@@ -20,9 +22,13 @@ import {
   chatRouter,
   messRouter,
   communityStandardsRouter,
+  notificationsRouter
 } from "./routes/index.js";
 import { Server } from "socket.io"; // Import socket.io
 import { createServer } from "http"; // Import createServer cho việc khởi tạo HTTP server
+import { initSocket } from "./helpers/socket.io.js";
+import { transactionRouter } from "./routes/transaction.js";
+import { refundOwnerSpace } from "./job/RefundOwnerSpace.js";
 
 dotenv.config();
 
@@ -51,6 +57,62 @@ app.use("/userNeed", userNeedRouter);
 app.use("/chat", chatRouter);
 app.use("/message", messRouter);
 app.use("/communityStandards", communityStandardsRouter);
+app.use("/notification", notificationsRouter)
+app.use("/transaction", transactionRouter)
+
+app.get("/transaction", (req,res) => {
+  const partnerCode = "MOMO";
+  const accessKey = "F8BBA842ECF85";
+  const secretkey = "K951B6PE1waDMi640xX08PD3vg6EkVlz";
+  const requestId = partnerCode + new Date().getTime();
+  const orderId = requestId;
+  const orderInfo = "pay with MoMo";
+  const redirectUrl = "https://momo.vn/return";
+  const ipnUrl = "https://callback.url/notify";
+  const amount = "50000";
+  const requestType = "captureWallet";
+  const extraData = ""; // Pass empty value if no additional data
+
+  // Generate the raw signature string
+  const rawSignature = `accessKey=${accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${redirectUrl}&requestId=${requestId}&requestType=${requestType}`;
+  console.log("RAW SIGNATURE:", rawSignature);
+
+  // Generate the HMAC SHA256 signature
+  const signature = crypto.createHmac('sha256', secretkey)
+      .update(rawSignature)
+      .digest('hex');
+  console.log("SIGNATURE:", signature);
+
+  // Create the request payload
+  const requestBody = JSON.stringify({
+      partnerCode: partnerCode,
+      accessKey: accessKey,
+      requestId: requestId,
+      amount: amount,
+      orderId: orderId,
+      orderInfo: orderInfo,
+      redirectUrl: redirectUrl,
+      ipnUrl: ipnUrl,
+      extraData: extraData,
+      requestType: requestType,
+      signature: signature,
+      lang: 'en'
+  });
+
+  axios.post('https://test-payment.momo.vn/v2/gateway/api/create', requestBody, {
+    headers: {
+        'Content-Type': 'application/json'
+    }
+})
+.then(response => {
+    console.log(`Status: ${response.status}`);
+    console.log('Body:', response.data);
+    console.log('payUrl:', response.data.payUrl); // Access the payUrl in the response
+})
+.catch(error => {
+    console.error(`Problem with request: ${error.message}`);
+});
+})
 
 // Middleware để xử lý CORS headers
 app.use((req, res, next) => {
@@ -62,13 +124,23 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((err, req, res, next) => {
+  const errorMessage = err.message;
+  const statusCode = err.statusCode || 500;
+  const stack = err.stack;
+
+  res
+    .status(statusCode)
+    .json({ message: errorMessage, error: errorMessage, statusCode, stack });
+});
+
 const Port = process.env.PORT || 9999;
 
 // Tạo HTTP server từ Express app
 const server = createServer(app);
 
 // Thiết lập Socket.io sử dụng HTTP server
-const io = new Server(server, {
+const io = new initSocket(server, {
   cors: {
     origin: "http://localhost:3000", // Allow frontend từ localhost:3000
   },
@@ -126,3 +198,8 @@ server.listen(Port, async () => {
     console.error("Database connection failed", error);
   }
 });
+cron.schedule("* * * * *", refundOwnerSpace.plusDay)
+
+cron.schedule("0 0 * * 3", refundOwnerSpace.plusWeek);
+
+cron.schedule("0 0 1,8,15,22 * *", refundOwnerSpace.plusMonth);

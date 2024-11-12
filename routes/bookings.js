@@ -5,6 +5,7 @@ import bookingDetail from "../models/bookingDetails.js";
 import Spaces from "../models/spaces.js";
 import axios from "axios";
 import { mapboxToken } from "../helpers/constants.js";
+import { transactionDao } from "../dao/transactionDao.js";
 
 
 const bookingRouter = express.Router();
@@ -26,74 +27,6 @@ bookingRouter.get("/", async (req, res, next) => {
     next(error);
   }
 });
-
-
-// lấy các đơn book của người cho thuê
-
-bookingRouter.get("/spaces/:userId", async (req, res, next) => {
-  try {
-    const { userId } = req.params;
-
-    const bookings = await Bookings.find({})
-      .populate("spaceId")
-      .populate("userId")
-      .exec();
-
-    const filteredBookings = bookings.filter(
-      (booking) => booking.spaceId.userId.toString() === userId
-    );
-
-    if (filteredBookings.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No bookings found for this user in their spaces" });
-    }
-
-    res.json(filteredBookings);
-  } catch (error) {
-    next(error);
-  }
-});
-
-//Duyệt booking của người dùng muốn thuê...
-
-bookingRouter.put("/updatestatus/:id", async (req, res, next) => {
-  try {
-    const { ownerApprovalStatus, cancelReason } = req.body;
-
-    // Validate the ownerApprovalStatus value
-    if (!["pending", "accepted", "declined"].includes(ownerApprovalStatus)) {
-      return res.status(400).json({ message: "Invalid owner approval status" });
-    }
-
-    // Prepare the update data
-    const updateData = {
-      ownerApprovalStatus,
-    };
-
-    // If the status is declined, add the cancelReason
-    if (ownerApprovalStatus === "declined") {
-      updateData.cancelReason = cancelReason;
-    }
-
-    const updatedBooking = await Bookings.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true }
-    )
-      .populate("userId")
-      .populate("spaceId");
-
-    if (!updatedBooking) {
-      return res.status(404).json({ message: "Booking not found" });
-    }
-
-    res.json(updatedBooking);
-  } catch (error) {
-    next(error);
-  }
-});
-
 
 // Endpoint kiểm tra khung giờ khả dụng
 bookingRouter.post('/check-hour-availability', BookingController.checkHourAvailability);
@@ -117,7 +50,8 @@ bookingRouter.put("/update-status/:id", async (req, res, next) => {
       req.params.id,
       { status, cancelReason: status === "canceled" ? cancelReason : undefined }, // Cập nhật cancelReason chỉ khi status là "canceled"
       { new: true }
-    ).populate("userId");
+    ).populate("userId")
+    .populate("spaceId");;
 
     if (!updatedBooking) {
       return res.status(404).json({ message: "Không tìm thấy booking" });
@@ -125,10 +59,11 @@ bookingRouter.put("/update-status/:id", async (req, res, next) => {
     // Nếu trạng thái là "completed", gửi email
 
     if (status === "completed") {
-      const tenantEmail = updatedBooking.userId.gmail; // Giả sử bạn có trường email trong user
-      console.log(tenantEmail);
+      await transactionDao.transferMoneyBooking(updatedBooking.userId._id.toString(), "Hoàn tiền", "Thành công", updatedBooking.totalAmount, `Hoàn tiền ${updatedBooking.spaceId.name}`)
+      // const tenantEmail = updatedBooking.userId.gmail; // Giả sử bạn có trường email trong user
+      // console.log(tenantEmail);
 
-      await sendEmailBookingCompleted.sendEmailBookingCompleted(tenantEmail, updatedBooking);
+      // await sendEmailBookingCompleted.sendEmailBookingCompleted(tenantEmail, updatedBooking);
     }
 
     res.json(updatedBooking);
@@ -244,6 +179,115 @@ bookingRouter.get("/near-spaces", async (req, res) => {
     return res
       .status(500)
       .json({ message: "Error retrieving the top products" });
+  }
+});
+
+//Duyệt booking của người dùng muốn thuê...
+bookingRouter.put("/updateBookStatus/:id", async (req, res, next) => {
+  try {
+    const { ownerApprovalStatus, cancelReason } = req.body;
+
+    // Validate the ownerApprovalStatus value
+    if (!["pending", "accepted", "declined"].includes(ownerApprovalStatus)) {
+      return res.status(400).json({ message: "Invalid owner approval status" });
+    }
+
+    // Prepare the update data
+    const updateData = {
+      ownerApprovalStatus,
+    };
+
+    // If the status is declined, add the cancelReason
+    if (ownerApprovalStatus === "declined") {
+      updateData.cancelReason = cancelReason;
+    }
+
+    const updatedBooking = await Bookings.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    )
+      .populate("userId")
+      .populate("spaceId");
+
+    if (!updatedBooking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    res.json(updatedBooking);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// huỷ lịch book
+bookingRouter.put("/:id/cancel", async (req, res) => {
+  try {
+    const booking = await Bookings.findById(req.params.id)
+      .populate("userId")
+      .populate("spaceId");
+
+    if (!booking) {
+      return res.status(404).json({ message: "Không tìm thấy booking" });
+    }
+
+    // Kiểm tra nếu trạng thái hoặc trạng thái phê duyệt của chủ sở hữu ngừng hủy
+    if (
+      booking.ownerApprovalStatus === "declined" ||
+      booking.status === "canceled"
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Không thể hủy booking ở trạng thái này" });
+    }
+
+    // Kiểm tra theo rentalType
+    const currentDate = new Date();
+    const startDate = new Date(booking.startDate); // Lấy thời gian bắt đầu của booking
+    const timeDifference = startDate - currentDate; // Tính sự chênh lệch thời gian
+
+    if (["hour", "day"].includes(booking.rentalType)) {
+      // Nếu rentalType là "hour" hoặc "day", hủy trước 24 giờ
+      if (timeDifference < 24 * 60 * 60 * 1000) { // 24 giờ tính bằng mili giây
+        return res.status(400).json({ message: "Không thể hủy khi còn dưới 24 giờ" });
+      }
+    }  
+    else if (booking.rentalType === "week") {
+      const currentDate = new Date();
+      const startDate = new Date(booking.startDate);
+      const timeDifference = startDate - currentDate; // Tính sự chênh lệch thời gian
+    
+      // Kiểm tra nếu chưa sử dụng ngày nào (chưa đến ngày bắt đầu)
+      if (timeDifference > 0) {
+        // Chưa đến ngày bắt đầu, có thể hủy booking
+        return res.json({ message: "Booking có thể hủy" });
+      }
+    
+      // Kiểm tra nếu đã sử dụng hơn 3 ngày
+      if (Math.abs(timeDifference) > 3 * 24 * 60 * 60 * 1000) { // Đã sử dụng hơn 3 ngày
+        return res.status(400).json({ message: "Không thể hủy booking khi đã sử dụng hơn 3 ngày" });
+      }
+    }
+    
+    
+    else if (booking.rentalType === "month") {
+       const timeUsed = timeDifference / (1000 * 60 * 60 * 24); 
+       // Kiểm tra nếu đã sử dụng quá 2 tuần (14 ngày)
+        if (timeUsed > 14) {
+          return res.status(400).json({ message: "Không thể hủy khi đã sử dụng quá 2 tuần" });
+        }
+    }
+
+    // Tiến hành hủy booking
+    booking.status = "canceled";
+    booking.cancelReason = req.body.cancelReason; // Chọn lý do hủy
+    booking.totalAmount = 0; // Đặt lại tổng số tiền
+    await booking.save();
+
+    return res.json({ message: "Booking đã được hủy thành công" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Lỗi khi hủy booking" });
   }
 });
 
