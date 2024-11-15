@@ -128,6 +128,8 @@ spaceRouter.get("/cate/:id", spaceController.getSimilarSpaces);
 // update space
 spaceRouter.post("/update/:id", spaceController.updateSpace);
 
+// get statistic for space belong userId, include booking details
+spaceRouter.get("/statistic/:userId", spaceController.getBookingDetailsSpaces);
 // so sánh
 spaceRouter.get("/compare-spaces-differences", async (req, res) => {
   const { id1, id2 } = req.query;

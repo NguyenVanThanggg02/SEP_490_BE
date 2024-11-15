@@ -8,6 +8,7 @@ import Rules from "../models/rules.js";
 import pkg from 'cloudinary'; // Nhập package cloudinary dưới dạng mặc định
 import Appliances from "../models/appliances.js";
 import Users from "../models/users.js";
+import Bookings from "../models/bookings.js";
 const getAllSpacesApply = async (req, res) => {
   try {
     const allSpaces = await spaceDao.fetchAllSpacesApply();
@@ -367,7 +368,41 @@ const updateSpaceCensorshipAndCommunityStandards = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Error updating space and community standards' });
   }
 };
+const getBookingDetailsSpaces = async (req, res) => {
+  const userId = req.params.userId;
 
+  if (!userId)
+    return res.status(404).json({
+      message: "All field is required",
+    });
+  try {
+    const spaces = await Spaces.find({ userId }, "name").lean();
+    const spacesWithBook = await Promise.all(
+      spaces.map(async (space, i) => {
+        const bookings = await Bookings.find(
+          { spaceId: space._id.toString(), status: "completed" },
+          "createdAt plusTransId"
+        )
+          .lean()
+          .populate("plusTransId");
+
+        return {
+          ...space,
+          bookings,
+        };
+      })
+    );
+
+    res.json({
+      message: "Get space with booking info successfully",
+      data: spacesWithBook,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Get space with booking info failed",
+    });
+  }
+};
 
 export default {
   getAllSpaces,
@@ -380,5 +415,6 @@ export default {
   getAllSpacesApply,
   deleteSpace,
   updateSpaceCensorshipAndCommunityStandards,
-  updateSpace
+  updateSpace,
+  getBookingDetailsSpaces
 }
