@@ -252,7 +252,108 @@ const updateSpace = async (req, res) => {
   }
 };
 
+//get space based on filter
+const getFilteredSpaces = async (req, res, next) => {
+  try {
+    const {
+      name,
+      cateId,
+      applianceNames,
+      minArea,
+      maxArea,
+      typeOfPrice,
+      minPrice,
+      maxPrice,
+      district,
+    } = req.query;
+    // Khởi tạo đối tượng filter rỗng
+    let filter = {};
 
+    // Lọc theo tên
+    if (name) {
+      const trimmedVal = name.trim();
+      // Create a dynamic regular expression based on the input
+      const regex = new RegExp(`.*${trimmedVal}.*`, "i");
+      filter.name = { $regex: regex };
+    }
+
+    // Lọc theo danh mục
+    if (cateId) {
+      if (cateId !== "all") {
+        filter.categoriesId = cateId; // categoriesId để lọc theo ObjectId
+      }
+    }
+
+    // Convert minArea and maxArea to strings
+    const minAreaStr = minArea.toString();
+    const maxAreaStr = maxArea.toString();
+
+    // Lọc theo khu vực
+    if (minArea && maxArea) {
+      filter["$expr"] = {
+        $and: [
+          { $gte: [{ $toDouble: "$area" }, parseFloat(minAreaStr)] },
+          { $lte: [{ $toDouble: "$area" }, parseFloat(maxAreaStr)] },
+        ],
+      };
+    } else if (minArea) {
+      filter["$expr"] = {
+        $and: [{ $gte: [{ $toDouble: "$area" }, parseFloat(minAreaStr)] }],
+      };
+    } else if (maxArea) {
+      filter["$expr"] = {
+        $and: [{ $lte: [{ $toDouble: "$area" }, parseFloat(maxAreaStr)] }],
+      };
+    }
+
+    // Lọc theo gias
+    if (typeOfPrice && minPrice && maxPrice) {
+      filter["$expr"] = {
+        $and: [
+          { $gte: [{ $toDouble: `$${typeOfPrice}` }, parseFloat(minPrice)] },
+          { $lte: [{ $toDouble: `$${typeOfPrice}` }, parseFloat(maxPrice)] },
+        ],
+      };
+    } else if (minPrice) {
+      filter["$expr"] = {
+        $gte: [{ $toDouble: `$${typeOfPrice}` }, parseFloat(minPrice)],
+      };
+    } else if (maxPrice) {
+      filter["$expr"] = {
+        $lte: [{ $toDouble: `$${typeOfPrice}` }, parseFloat(maxPrice)],
+      };
+    }
+
+    console.log("filter", filter);
+
+    // Lọc theo tên thiết bị, applianceNames can be array or string
+    if (applianceNames?.length || applianceNames) {
+      // Step 1: Find appliance documents that match the given appliance names
+      const appliances = await Appliances.find({
+        "appliances.name": {
+          $in: applianceNames?.length ? applianceNames : [applianceNames],
+        },
+      }).lean();
+
+      const applianceIds = appliances.map((appliance) => appliance._id);
+      filter["appliancesId"] = { $in: applianceIds };
+    }
+
+    const filteredSpaces = await Spaces.find(filter)
+      .lean()
+      .populate("categoriesId")
+      .populate("rulesId")
+      .populate("reviews")
+      .populate("appliancesId"); // Populate appliancesId nếu không có applianceNames
+
+    res.status(200).json({
+      message: "Get the filtered space successfully",
+      data: filteredSpaces,
+    });
+  } catch (error) {
+    next(error); // Gọi next với lỗi để xử lý lỗi
+  }
+};
 
 const changeFavoriteStatus = async (req, res) => {
   try {
@@ -416,5 +517,6 @@ export default {
   deleteSpace,
   updateSpaceCensorshipAndCommunityStandards,
   updateSpace,
-  getBookingDetailsSpaces
+  getBookingDetailsSpaces,
+  getFilteredSpaces
 }
