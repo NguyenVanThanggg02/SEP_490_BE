@@ -2,6 +2,7 @@ import { reviewDao } from "../dao/index.js";
 import Bookings from "../models/bookings.js";
 import Reviews from "../models/reviews.js";
 import Spaces from "../models/spaces.js";
+
 const getReviewBySId = async (req, res) => {
   try {
     const review = req.params.id;
@@ -58,7 +59,7 @@ const createReview = async (req, res) => {
       return res.status(404).json({ message: "Booking space not found" });
     }
 
-    const currDate = new Date();
+    // const currDate = new Date();
     // const checkOutDate = new Date(booking.endDate);
     // if (currDate < checkOutDate || booking.status !== "completed") {
     //   return res

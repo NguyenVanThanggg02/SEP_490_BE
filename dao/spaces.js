@@ -6,6 +6,7 @@ const fetchAllSpacesApply = async () => {
     .populate("communityStandardsId")
     .populate("appliancesId")
     .populate("userId")
+    .populate("reviews")
     .exec()
   } catch (error) {
     throw new Error(error.toString());

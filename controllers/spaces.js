@@ -19,7 +19,7 @@ const getAllSpacesApply = async (req, res) => {
 }
 const getAllSpaces = async (req, res) => {
   try {
-    const allSpaces = await spaceDao.fetchAllSpaces();
+    const allSpaces = await Spaces.find({}).lean().populate("reviews");
     res.status(200).json(allSpaces)
   } catch (error) {
     res.status(500).json({ error: error.toString() })
