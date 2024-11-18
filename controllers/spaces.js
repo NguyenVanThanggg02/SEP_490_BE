@@ -9,6 +9,7 @@ import pkg from 'cloudinary'; // Nhập package cloudinary dưới dạng mặc 
 import Appliances from "../models/appliances.js";
 import Users from "../models/users.js";
 import Bookings from "../models/bookings.js";
+import UserNeeds from "../models/userNeeds.js";
 const getAllSpacesApply = async (req, res) => {
   try {
     const allSpaces = await spaceDao.fetchAllSpacesApply();
@@ -390,8 +391,6 @@ const deleteSpace = async (req, res) => {
 
     res.status(200).json(deletedSpace);
   } catch (error) {
-    // Khi gặp lỗi, trả về mã lỗi 500 và thông báo lỗi
-    console.log('Failed to delete space:', error);  // Để dễ dàng debug
     return res.status(500).json({ error: error.message });
   }
 };

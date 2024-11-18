@@ -73,6 +73,7 @@ export const updateSpace = async (id, spaceData) => {
 const deleteSpace = async (id) => {
   try {
     const deleteProduct = await Spaces.findByIdAndDelete(id).exec();
+    if (!deleteProduct) throw new Error('Server error');
     return deleteProduct;
   } catch (error) {
     throw new Error(error.toString());

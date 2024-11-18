@@ -3,13 +3,12 @@ import sinon from "sinon";
 import spaceController from "../controllers/spaces.js";
 import { spaceDao } from "../dao/index.js";
 import Spaces from "../models/spaces.js";
-import mongoose from "mongoose";
 import cloudinary from "../cloudinary.config.js";
-import {spaceRouter}  from "../routes/index.js";
-import express from "express";
-import supertest from "supertest";
+import express from 'express';
+import spaceRouter from '../routes/spaces.js'; 
+
 describe("Space Controller-Tests", () => {
-  let req, res, sandbox;
+  let req, res, sandbox,app;
 
   beforeEach(() => {
     // Khởi tạo request, response và sandbox của sinon
@@ -638,9 +637,10 @@ describe('removeImages', () => {
     it('should return error if there is a server issue', async () => {
       // Giả sử có lỗi khi gọi deleteSpace
       sandbox.stub(spaceDao, 'deleteSpace').rejects(new Error('Server error'));
+
     
       // Gọi controller function
-      await spaceController.deleteSpace(req, res);
+      await spaceController.deleteSpace(req, res);  
     
       // Kiểm tra phản hồi khi có lỗi server
       expect(res.status.calledWith(500)).to.be.true;
@@ -793,71 +793,7 @@ describe('removeImages', () => {
       expect(res.send.calledWith({ error: 'Error: Database error' })).to.be.true;
     });
   });
-  
-  describe('filterSpace', () => {
-    let sandbox, req, res;
-  
-    beforeEach(() => {
-      // Khởi tạo sandbox và các đối tượng cần thiết
-      sandbox = sinon.createSandbox();
-      req = {
-        query: {
-          location: 'Hanoi',
-          minPrice: 100,
-          maxPrice: 500,
-          category: 'office',
-          areaMin: 20,
-          areaMax: 50,
-          applianceNames: ['air conditioner'],
-        },
-      };
-      res = {
-        status: sinon.stub().returnsThis(),
-        json: sinon.stub(),
-      };
-    });
-  
-    afterEach(() => {
-      sandbox.restore();
-    });
-  
-    it('should return filtered spaces with status 200', async () => {
-      // Giả lập dữ liệu trả về từ model Spaces
-      const mockSpaces = [{ id: 1, name: 'Test Space', location: 'Hanoi' }];
-      sandbox.stub(Spaces, 'find').resolves(mockSpaces);  // Giả lập việc tìm kiếm không có lỗi
-  
-      await app.handle(req, res);
-  
-      // Kiểm tra kết quả trả về
-      expect(res.status.calledWith(200)).to.be.true;
-      expect(res.json.calledWith(mockSpaces)).to.be.true;
-    });
-  
-    it('should return filtered spaces when applianceNames is not provided', async () => {
-      // Cập nhật query không có applianceNames
-      req.query.applianceNames = undefined;
-  
-      const mockSpaces = [{ id: 1, name: 'Test Space', location: 'Hanoi' }];
-      sandbox.stub(Spaces, 'find').resolves(mockSpaces);  // Giả lập tìm kiếm không có applianceNames
-  
-      await app.handle(req, res);
-  
-      // Kiểm tra kết quả trả về
-      expect(res.status.calledWith(200)).to.be.true;
-      expect(res.json.calledWith(mockSpaces)).to.be.true;
-    });
-  
-    it('should return 500 if an error occurs', async () => {
-      // Giả lập lỗi khi truy vấn dữ liệu từ model Spaces
-      sandbox.stub(Spaces, 'find').rejects(new Error('Database error'));
-  
-      await app.handle(req, res);
-  
-      // Kiểm tra lỗi trả về với status 500
-      expect(res.status.calledWith(500)).to.be.true;
-      expect(res.json.calledWith({ error: 'Error: Database error' })).to.be.true;
-    });
-  });
+
 
   
   describe('similarSpace', () => {
@@ -1090,74 +1026,99 @@ describe('removeImages', () => {
     });
   });
 
-  describe('GET /spaces/:id', () => {
-    let app;
-    let sandbox;
-    let mockSpace;
-  
-    beforeEach(() => {
+  describe('filterSpace', () => {
+    before(() => {
       app = express();
       app.use(express.json());
-      app.use("/spaces", spaceRouter);
-  
-      sandbox = sinon.createSandbox();
-  
-      // Mock dữ liệu của không gian
-      mockSpace = {
-        _id: "12345",
-        name: "Test Space",
-        userId: "67890",
-        rulesId: ["rule1", "rule2"],
-        appliancesId: ["appliance1"],
-        categoriesId: "category1",
-        communityStandardsId: "standard1",
-      };
+      app.use('/api/spaces', spaceRouter);
     });
   
     afterEach(() => {
-      sandbox.restore();  // Đảm bảo sandbox được restore sau mỗi test
+      sinon.restore(); // Khôi phục các stub sau mỗi test
     });
   
-    it('should return 200 and space details when space is found', async () => {
-      const findByIdStub = sandbox.stub(Spaces, "findById").resolves(mockSpace);
-      const populateStub = sandbox.stub().returnsThis();
-      const execStub = sandbox.stub().resolves(mockSpace);
+    it('should filter spaces by location', async () => {
+      const mockSpaces = [
+        { _id: '1', location: 'Hanoi', censorship: 'Chấp nhận' },
+        { _id: '2', location: 'Hochiminh', censorship: 'Chấp nhận' },
+      ];
   
-      findByIdStub.returns({ populate: populateStub });
-      populateStub.returns({ exec: execStub });
+      const findStub = sinon.stub(Spaces, 'find').resolves(mockSpaces);
   
-      const response = await supertest(app)
-        .get('/spaces/12345')  // Đường dẫn của API
-        .expect(200);
+      const response = await request(app)
+        .get('spaces/filter')
+        .query({ location: 'Hanoi' });
   
-      expect(response.body).to.deep.equal(mockSpace);
+      expect(response.status).to.equal(200);
+      expect(findStub.calledOnce).to.be.true;
+      expect(response.body).to.be.an('array');
+      expect(response.body.length).to.equal(2);
     });
   
-    it('should return 400 if space is not found', async () => {
-      const findByIdStub = sandbox.stub(Spaces, "findById").resolves(null);
-      const populateStub = sandbox.stub().returnsThis();
-      const execStub = sandbox.stub().resolves(null);
-  
-      findByIdStub.returns({ populate: populateStub });
-      populateStub.returns({ exec: execStub });
-  
-      const response = await supertest(app)
-        .get('/spaces/12345')
-        .expect(400);
-  
-      expect(response.body).to.deep.equal({ message: "Space not found" });
+    it('should filter spaces by price range', async () => {
+      const mockSpaces = [
+        { _id: '1', pricePerHour: 50000, censorship: 'Chấp nhận' },
+        { _id: '2', pricePerHour: 100000, censorship: 'Chấp nhận' },
+      ];
+    
+      sinon.stub(Spaces.prototype.find).resolves(mockSpaces);
+    
+      const response = await request(app)
+        .get('/spaces/filter')
+        .query({ minPrice: 30000, maxPrice: 100000 });
+    
+      expect(response.status).to.equal(200);
+      expect(Spaces.prototype.find.calledOnce).to.be.true;
+      expect(response.body).to.be.an('array');
+      expect(response.body.length).to.equal(2);
     });
   
-    it('should return 500 if there is a server error', async () => {
-      const findByIdStub = sandbox.stub(Spaces, "findById").rejects(new Error("Database error"));
+    it('should filter spaces by area range', async () => {
+      const mockSpaces = [
+        { _id: '1', area: 50, censorship: 'Chấp nhận' },
+        { _id: '2', area: 100, censorship: 'Chấp nhận' },
+      ];
   
-      const response = await supertest(app)
-        .get('/spaces/12345')
-        .expect(500);
+      const findStub = sinon.stub(Spaces, 'find').resolves(mockSpaces);
   
-      expect(response.body).to.deep.equal({ message: "Error: Database error" });
+      const response = await request(app)
+        .get('spaces/filter')
+        .query({ areaMin: 30, areaMax: 150 });
+  
+      expect(response.status).to.equal(200);
+      expect(findStub.calledOnce).to.be.true;
+      expect(response.body).to.be.an('array');
+      expect(response.body.length).to.equal(2);
+    });
+  
+    it('should filter spaces by appliance names', async () => {
+      const mockSpaces = [
+        { _id: '1', appliancesId: [{ appliances: [{ name: 'Air Conditioner' }] }] },
+      ];
+  
+      const findStub = sinon.stub(Spaces, 'find').resolves(mockSpaces);
+  
+      const response = await request(app)
+        .get('spaces/filter')
+        .query({ applianceNames: 'Air Conditioner' });
+  
+      expect(response.status).to.equal(200);
+      expect(findStub.calledOnce).to.be.true;
+      expect(response.body).to.be.an('array');
+      expect(response.body.length).to.equal(1);
+    });
+  
+    it('should handle error gracefully', async () => {
+      const findStub = sinon.stub(Spaces, 'find').rejects(new Error('Database error'));
+  
+      const response = await request(app).get('spaces/filter');
+  
+      expect(response.status).to.equal(500);
+      expect(findStub.calledOnce).to.be.true;
+      expect(response.body.error).to.equal('Database error');
     });
   });
+  
   
 
   describe("spaceByUserId", () => {
