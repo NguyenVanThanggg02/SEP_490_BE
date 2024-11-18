@@ -19,7 +19,7 @@ const getAllSpacesApply = async (req, res) => {
 }
 const getAllSpaces = async (req, res) => {
   try {
-    const allSpaces = await Spaces.find({}).lean().populate("reviews");
+    const allSpaces = await Spaces.find({}).lean().populate("reviews").populate("userId");
     res.status(200).json(allSpaces)
   } catch (error) {
     res.status(500).json({ error: error.toString() })
@@ -344,6 +344,7 @@ const getFilteredSpaces = async (req, res, next) => {
       .populate("categoriesId")
       .populate("rulesId")
       .populate("reviews")
+      .populate("userId")
       .populate("appliancesId"); // Populate appliancesId nếu không có applianceNames
 
     res.status(200).json({
