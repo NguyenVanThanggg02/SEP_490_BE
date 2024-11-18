@@ -1,11 +1,15 @@
-import nodemailer from 'nodemailer';
-import BookingDAO from '../dao/Booking.js';
-import Bookings from '../models/bookings.js';
-import bookingDetail from '../models/bookingDetails.js';
+import nodemailer from "nodemailer";
+import BookingDAO from "../dao/Booking.js";
+import Bookings from "../models/bookings.js";
+import bookingDetail from "../models/bookingDetails.js";
+import { notificationDao } from "../dao/index.js";
+import Spaces from "../models/spaces.js";
+import Users from "../models/users.js";
+import { transactionDao } from "../dao/transactionDao.js";
 
 const sendEmailBookingCompleted = async (tenantEmail, bookingDetails) => {
   const transporter = nodemailer.createTransport({
-    service: 'Gmail', // Hoặc dịch vụ email bạn sử dụng
+    service: "Gmail", // Hoặc dịch vụ email bạn sử dụng
     auth: {
       user: "toan20022222@gmail.com", // Địa chỉ email của bạn
       pass: "umpw zlcp eujr njwp", // Mật khẩu email
@@ -31,9 +35,14 @@ export const createBooking = async (req, res) => {
   try {
     const { userId, spaceId, rentalType, startDate, endDate, selectedSlots, selectedDates, status, notes, totalAmount } = req.body;
 
+    const user = await Users.findById(userId);
     // Kiểm tra các trường dữ liệu trước khi lưu
     if (!userId || !spaceId || !startDate || !endDate || !selectedSlots || !selectedDates) {
       return res.status(400).json({ message: "Missing required fields." });
+    }
+
+    if (Number(totalAmount) > user.balanceAmount) {
+      return res.status(400).json({ message: "Số dư không đủ để thực hiện giao dịch" });
     }
 
     // Kiểm tra xung đột trước khi tạo đặt phòng mới
@@ -82,6 +91,10 @@ export const createBooking = async (req, res) => {
       await bookingDetailEntry.save();
     }
 
+    const space = await Spaces.findById(spaceId);
+
+    const minusTransactionData = await transactionDao.transferMoneyBooking(userId, "Trừ tiền", "Thành công", totalAmount, `Thanh toán ${space.name}`)
+
     // Tạo đối tượng đặt phòng mới
     const newBooking = new Bookings({
       userId,
@@ -91,24 +104,34 @@ export const createBooking = async (req, res) => {
       endDate,
       selectedSlots,
       selectedDates,
-      status,
+      status: "completed",
       notes,
       items: [bookingDetailEntry._id],
-      totalAmount
+      totalAmount,
+      minusTransId: minusTransactionData.transaction._id.toString()
     });
 
     await newBooking.save();
-    res.status(201).json({ message: 'Booking created successfully', newBooking });
+    await notificationDao.saveAndSendNotification(
+      space.userId.toString(),
+      `${user.fullname} đã booking ${space.name}`,
+      space.images && space.images.length > 0 ? space.images[0].url : null
+    );
+    res
+      .status(201)
+      .json({ message: "Booking created successfully", newBooking });
   } catch (error) {
     console.error("Error creating booking:", error);
-    res.status(500).json({ message: `Error creating booking: ${error.message}` });
+    res
+      .status(500)
+      .json({ message: `Error creating booking: ${error.message}` });
   }
 };
 
 
 const checkHourAvailability = async (req, res) => {
   try {
-    const { spaceId, dates } = req.body;
+    const { spaceId, dates, rentalType } = req.body;
     const parsedDates = dates.map(date => {
       const parsedDate = new Date(date);
       if (isNaN(parsedDate)) {
@@ -118,17 +141,29 @@ const checkHourAvailability = async (req, res) => {
     })
 
     // Lấy tất cả các booking trùng với các ngày đã chọn
-    const bookings = await BookingDAO.getBookingsBySpaceAndDates(spaceId, parsedDates, 'hour');
-
+    const bookings = await BookingDAO.getBookingsBySpaceAndDates(spaceId, parsedDates, rentalType);
+    if (rentalType === 'day' && bookings.length > 0)  {
+      res.status(200).json({
+        isAvailable: false,
+      });
+      return;
+    }
     // Lưu trữ các slot đã được đặt
     const bookedSlots = bookings.reduce((acc, booking) => {
-      booking.selectedSlots.forEach(slot => {
-        const dateKey = new Date(slot.date).toDateString();
-        if (!acc[dateKey]) {
-          acc[dateKey] = [];
-        }
-        acc[dateKey].push(`${slot.startTime}-${slot.endTime}`);
-      });
+      if (booking.rentalType !== 'hour') {
+        booking.selectedDates.forEach((selectedDate) => {
+          const dateKey = new Date(selectedDate).toDateString();
+          acc[dateKey] = -1; // cả ngày
+        })
+      } else {
+        booking.selectedSlots.forEach(slot => {
+          const dateKey = new Date(slot.date).toDateString();
+          if (!acc[dateKey]) {
+            acc[dateKey] = [];
+          }
+          acc[dateKey].push(`${slot.startTime}-${slot.endTime}`);
+        });
+      }
       return acc;
     }, {});
 
@@ -162,6 +197,7 @@ const checkHourAvailability = async (req, res) => {
 
     const availableSlots = parsedDates.map(date => {
       const dateKey = date.toDateString();
+      if (bookedSlots[dateKey] === -1) {return {date: dateKey, isAvailable: false}}
       const slotsForDay = bookedSlots[dateKey] || [];
       const slotsAvailable = allSlots.filter(slot => {
         const slotKey = `${slot.startTime}-${slot.endTime}`;
@@ -174,7 +210,6 @@ const checkHourAvailability = async (req, res) => {
         isAvailable: slotsAvailable.length > 0 // Ngày khả dụng nếu có slot nào trống
       };
     });
-
     res.status(200).json({ availableSlots });
   } catch (error) {
     console.error("Error checking hour availability:", error);
@@ -244,5 +279,3 @@ const BookingController = {
 }
 
 export default BookingController
-
-
