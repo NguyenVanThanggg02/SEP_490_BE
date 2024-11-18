@@ -182,6 +182,7 @@ bookingRouter.get("/near-spaces", async (req, res) => {
   }
 });
 
+
 //Duyệt booking của người dùng muốn thuê...
 bookingRouter.put("/updateBookStatus/:id", async (req, res, next) => {
   try {
@@ -288,6 +289,60 @@ bookingRouter.put("/:id/cancel", async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Lỗi khi hủy booking" });
+  }
+});
+
+
+// lấy các đơn book của người cho thuê
+bookingRouter.get("/spaces/:userId", async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const bookings = await Bookings.find({})
+      .populate("spaceId")
+      .populate("userId")
+      .exec();
+    const filteredBookings = bookings.filter(
+      (booking) => booking.spaceId.userId.toString() === userId
+    );
+    if (filteredBookings.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No bookings found for this user in their spaces" });
+    }
+    res.json(filteredBookings);
+  } catch (error) {
+    next(error);
+  }
+});
+
+bookingRouter.put("/updatestatus/:id", async (req, res, next) => {
+  try {
+    const { ownerApprovalStatus, cancelReason } = req.body;
+    // Validate the ownerApprovalStatus value
+    if (!["pending", "accepted", "declined"].includes(ownerApprovalStatus)) {
+      return res.status(400).json({ message: "Invalid owner approval status" });
+    }
+    // Prepare the update data
+    const updateData = {
+      ownerApprovalStatus,
+    };
+    // If the status is declined, add the cancelReason
+    if (ownerApprovalStatus === "declined") {
+      updateData.cancelReason = cancelReason;
+    }
+    const updatedBooking = await Bookings.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    )
+      .populate("userId")
+      .populate("spaceId");
+    if (!updatedBooking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+    res.json(updatedBooking);
+  } catch (error) {
+    next(error);
   }
 });
 

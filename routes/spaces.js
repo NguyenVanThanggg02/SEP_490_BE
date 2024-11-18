@@ -50,78 +50,8 @@ spaceRouter.get("/search/:name", async (req, res, next) => {
   }
 });
 
-spaceRouter.get("/filter", async (req, res, next) => {
-  try {
-    const { location, minPrice, maxPrice, category, areaMin, areaMax, applianceNames } = req.query;
-
-    // Khởi tạo đối tượng filter rỗng
-    let filter = { censorship: "Chấp nhận" };
-    // Lọc theo địa chỉ
-    if (location) {
-      const rgx = (pattern) => new RegExp(`.*${pattern}.*`, "i"); // Không phân biệt chữ hoa/thường
-      filter.location = { $regex: rgx(location) };
-    }
-    
-    // Lọc theo khu vực
-    if (areaMin && areaMax) {
-      filter.area = { $gte: areaMin, $lte: areaMax }; 
-    } else if (areaMin) {
-      filter.area = { $gte: areaMin }; 
-    } else if (areaMax) {
-      filter.area = { $lte: areaMax }; 
-    }
-
-
-    if (minPrice && maxPrice) {
-      filter.pricePerHour = { $gte: minPrice, $lte: maxPrice };
-    } else if (minPrice) {
-      filter.pricePerHour = { $gte: minPrice };
-    } else if (maxPrice) {
-      filter.pricePerHour = { $lte: maxPrice };
-    }
-
-    // Lọc theo danh mục
-    if (category) {
-      filter.categories = category; // categoriesId để lọc theo ObjectId
-    }
-
-    // Lọc theo tên thiết bị
-    if (applianceNames) {
-      const applianceNamesArray = Array.isArray(applianceNames) ? applianceNames : [applianceNames];
-      const rgx = (pattern) => new RegExp(`.*${pattern}.*`, "i");
-
-      // Tìm các spaces mà appliances chứa tên applianceNames
-      const filteredSpaces = await Spaces.find(filter)
-        .populate("categoriesId")
-        .populate("rulesId")
-        .populate({
-          path: "appliancesId",
-          match: { 
-            "appliances.name": { $in: applianceNamesArray.map(name => rgx(name)) } // Lọc theo tên thiết bị
-          },
-        })
-        .exec();
-
-      // Lọc các không gian mà appliances không trống
-      const finalSpaces = filteredSpaces.filter(space => 
-        space.appliancesId && space.appliancesId.appliances.length > 0
-      );
-
-      return res.status(200).json(finalSpaces);
-    }
-
-    // Nếu không có applianceNames, chỉ tìm theo filter khác
-    const filteredSpaces = await Spaces.find(filter)
-      .populate("categoriesId")
-      .populate("rulesId")
-      .populate("appliancesId") // Populate appliancesId nếu không có applianceNames
-      .exec();
-
-    res.status(200).json(filteredSpaces);
-  } catch (error) {
-    next(error); // Gọi next với lỗi để xử lý lỗi
-  }
-});
+// });
+spaceRouter.get("/filter", spaceController.getFilteredSpaces);
 
 
 // get theo id
@@ -130,6 +60,8 @@ spaceRouter.get("/cate/:id", spaceController.getSimilarSpaces);
 // update space
 spaceRouter.post("/update/:id", spaceController.updateSpace);
 
+// get statistic for space belong userId, include booking details
+spaceRouter.get("/statistic/:userId", spaceController.getBookingDetailsSpaces);
 // so sánh
 spaceRouter.get("/compare-spaces-differences", async (req, res) => {
   const { id1, id2 } = req.query;
@@ -337,6 +269,5 @@ spaceRouter.put("/update/:postId", async (req, res, next) => {
     next(error);
   }
 });
-// spaceRouter.get("/spaces/:id", spaceController.getSpaceByUserId);
 
 export default spaceRouter;

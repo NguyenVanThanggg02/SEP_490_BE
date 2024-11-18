@@ -20,7 +20,7 @@ const getAllSpacesApply = async (req, res) => {
 }
 const getAllSpaces = async (req, res) => {
   try {
-    const allSpaces = await spaceDao.fetchAllSpaces();
+    const allSpaces = await Spaces.find({}).lean().populate("reviews").populate("userId");
     res.status(200).json(allSpaces)
   } catch (error) {
     res.status(500).json({ error: error.toString() })
@@ -314,7 +314,109 @@ const updateSpace = async (req, res) => {
   }
 };
 
+//get space based on filter
+const getFilteredSpaces = async (req, res, next) => {
+  try {
+    const {
+      name,
+      cateId,
+      applianceNames,
+      minArea,
+      maxArea,
+      typeOfPrice,
+      minPrice,
+      maxPrice,
+      district,
+    } = req.query;
+    // Khởi tạo đối tượng filter rỗng
+    let filter = {};
 
+    // Lọc theo tên
+    if (name) {
+      const trimmedVal = name.trim();
+      // Create a dynamic regular expression based on the input
+      const regex = new RegExp(`.*${trimmedVal}.*`, "i");
+      filter.name = { $regex: regex };
+    }
+
+    // Lọc theo danh mục
+    if (cateId) {
+      if (cateId !== "all") {
+        filter.categoriesId = cateId; // categoriesId để lọc theo ObjectId
+      }
+    }
+
+    // Convert minArea and maxArea to strings
+    const minAreaStr = minArea.toString();
+    const maxAreaStr = maxArea.toString();
+
+    // Lọc theo khu vực
+    if (minArea && maxArea) {
+      filter["$expr"] = {
+        $and: [
+          { $gte: [{ $toDouble: "$area" }, parseFloat(minAreaStr)] },
+          { $lte: [{ $toDouble: "$area" }, parseFloat(maxAreaStr)] },
+        ],
+      };
+    } else if (minArea) {
+      filter["$expr"] = {
+        $and: [{ $gte: [{ $toDouble: "$area" }, parseFloat(minAreaStr)] }],
+      };
+    } else if (maxArea) {
+      filter["$expr"] = {
+        $and: [{ $lte: [{ $toDouble: "$area" }, parseFloat(maxAreaStr)] }],
+      };
+    }
+
+    // Lọc theo gias
+    if (typeOfPrice && minPrice && maxPrice) {
+      filter["$expr"] = {
+        $and: [
+          { $gte: [{ $toDouble: `$${typeOfPrice}` }, parseFloat(minPrice)] },
+          { $lte: [{ $toDouble: `$${typeOfPrice}` }, parseFloat(maxPrice)] },
+        ],
+      };
+    } else if (minPrice) {
+      filter["$expr"] = {
+        $gte: [{ $toDouble: `$${typeOfPrice}` }, parseFloat(minPrice)],
+      };
+    } else if (maxPrice) {
+      filter["$expr"] = {
+        $lte: [{ $toDouble: `$${typeOfPrice}` }, parseFloat(maxPrice)],
+      };
+    }
+
+    console.log("filter", filter);
+
+    // Lọc theo tên thiết bị, applianceNames can be array or string
+    if (applianceNames?.length || applianceNames) {
+      // Step 1: Find appliance documents that match the given appliance names
+      const appliances = await Appliances.find({
+        "appliances.name": {
+          $in: applianceNames?.length ? applianceNames : [applianceNames],
+        },
+      }).lean();
+
+      const applianceIds = appliances.map((appliance) => appliance._id);
+      filter["appliancesId"] = { $in: applianceIds };
+    }
+
+    const filteredSpaces = await Spaces.find(filter)
+      .lean()
+      .populate("categoriesId")
+      .populate("rulesId")
+      .populate("reviews")
+      .populate("userId")
+      .populate("appliancesId"); // Populate appliancesId nếu không có applianceNames
+
+    res.status(200).json({
+      message: "Get the filtered space successfully",
+      data: filteredSpaces,
+    });
+  } catch (error) {
+    next(error); // Gọi next với lỗi để xử lý lỗi
+  }
+};
 
 const changeFavoriteStatus = async (req, res) => {
   try {
@@ -434,63 +536,27 @@ const updateSpaceCensorshipAndCommunityStandards = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Error updating space and community standards' });
   }
 };
-
-
 const getBookingDetailsSpaces = async (req, res) => {
   const userId = req.params.userId;
-  const { month, year } = req.query;
 
-  if (!userId || !month || !year)
+  if (!userId)
     return res.status(404).json({
       message: "All field is required",
     });
   try {
-    let filter = {
-      status: "completed",
-    };
-    if (month !== "all") {
-      // Create the start and end dates for the query
-      const startDate = new Date(year, month - 1, 1); // month is 0-indexed in JavaScript Date
-      const endDate = new Date(year, month, 0); // last day of the month
-      filter.createdAt = {
-        $gte: startDate,
-        $lt: endDate,
-      };
-    } else {
-      // First date and time of the year
-      const startDate = new Date(year, 0, 1, 0, 0, 0, 0);
-      // Last date and time of the year
-      const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
-      filter.createdAt = {
-        $gte: startDate,
-        $lt: endDate,
-      };
-    }
     const spaces = await Spaces.find({ userId }, "name").lean();
     const spacesWithBook = await Promise.all(
       spaces.map(async (space, i) => {
         const bookings = await Bookings.find(
-          { spaceId: space._id.toString(), status: "completed", ...filter },
+          { spaceId: space._id.toString(), status: "completed" },
           "createdAt plusTransId"
         )
           .lean()
           .populate("plusTransId");
 
-        const getTotalPlusTrans = (plusTransId) => {
-          return plusTransId.reduce((acc, currVal) => {
-            return acc + Number(currVal.amount);
-          }, 0);
-        };
-
-        const flatPlusTransId = bookings.flatMap((booking) => {
-          return booking.plusTransId;
-        });
         return {
           ...space,
-          numOfBooking: bookings.length,
-          totalAvenue: flatPlusTransId.length
-            ? getTotalPlusTrans(flatPlusTransId)
-            : 0,
+          bookings,
         };
       })
     );
@@ -506,6 +572,76 @@ const getBookingDetailsSpaces = async (req, res) => {
   }
 };
 
+// const getBookingDetailsSpaces = async (req, res) => {
+//   const userId = req.params.userId;
+//   const { month, year } = req.query;
+
+//   if (!userId || !month || !year)
+//     return res.status(404).json({
+//       message: "All field is required",
+//     });
+//   try {
+//     let filter = {
+//       status: "completed",
+//     };
+//     if (month !== "all") {
+//       // Create the start and end dates for the query
+//       const startDate = new Date(year, month - 1, 1); // month is 0-indexed in JavaScript Date
+//       const endDate = new Date(year, month, 0); // last day of the month
+//       filter.createdAt = {
+//         $gte: startDate,
+//         $lt: endDate,
+//       };
+//     } else {
+//       // First date and time of the year
+//       const startDate = new Date(year, 0, 1, 0, 0, 0, 0);
+//       // Last date and time of the year
+//       const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
+//       filter.createdAt = {
+//         $gte: startDate,
+//         $lt: endDate,
+//       };
+//     }
+//     const spaces = await Spaces.find({ userId }, "name").lean();
+//     const spacesWithBook = await Promise.all(
+//       spaces.map(async (space, i) => {
+//         const bookings = await Bookings.find(
+//           { spaceId: space._id.toString(), status: "completed", ...filter },
+//           "createdAt plusTransId"
+//         )
+//           .lean()
+//           .populate("plusTransId");
+
+//         const getTotalPlusTrans = (plusTransId) => {
+//           return plusTransId.reduce((acc, currVal) => {
+//             return acc + Number(currVal.amount);
+//           }, 0);
+//         };
+
+//         const flatPlusTransId = bookings.flatMap((booking) => {
+//           return booking.plusTransId;
+//         });
+//         return {
+//           ...space,
+//           numOfBooking: bookings.length,
+//           totalAvenue: flatPlusTransId.length
+//             ? getTotalPlusTrans(flatPlusTransId)
+//             : 0,
+//         };
+//       })
+//     );
+
+//     res.json({
+//       message: "Get space with booking info successfully",
+//       data: spacesWithBook,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Get space with booking info failed",
+//     });
+//   }
+// };
+
 export default {
   getAllSpaces,
   getSimilarSpaces,
@@ -519,5 +655,6 @@ export default {
   updateSpaceCensorshipAndCommunityStandards,
   updateSpace,
   getProposedSpaces,
-  getBookingDetailsSpaces
+  getBookingDetailsSpaces,
+  getFilteredSpaces
 }

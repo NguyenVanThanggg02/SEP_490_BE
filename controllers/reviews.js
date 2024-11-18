@@ -1,4 +1,7 @@
 import { reviewDao } from "../dao/index.js";
+import Bookings from "../models/bookings.js";
+import Reviews from "../models/reviews.js";
+import Spaces from "../models/spaces.js";
 
 const getReviewBySId = async (req, res) => {
   try {
@@ -41,13 +44,33 @@ const editReviewBySId = async (req, res) => {
 const createReview = async (req, res) => {
   try {
     const { text, rating, spaceId, userId } = req.body;
-
-    const newReview = await reviewDao.createReviewsBySId(
-      text,
-      rating,
+    if (!text || !rating || !spaceId || !userId) {
+      return res.status(404).json({ message: "All field is required" });
+    }
+    const foundSpace = await Spaces.findById(spaceId).lean();
+    if (!foundSpace) {
+      return res.status(404).json({ message: "Space not found" });
+    }
+    const booking = await Bookings.findOne({
+      userId,
       spaceId,
-      userId
-    );
+    }).lean();
+    if (!booking) {
+      return res.status(404).json({ message: "Booking space not found" });
+    }
+
+    // const currDate = new Date();
+    // const checkOutDate = new Date(booking.endDate);
+    // if (currDate < checkOutDate || booking.status !== "completed") {
+    //   return res
+    //     .status(404)
+    //     .json({ message: "You must checkout before create preview" });
+    // }
+    const newReview = await Reviews.create({ text, rating, spaceId, userId });
+    await Spaces.findByIdAndUpdate(spaceId, {
+      $push: { reviews: newReview._id },
+    }).lean();
+
     res.status(201).json({ message: "review added successfully", newReview });
   } catch (error) {
     res.status(500).json({ message: error.toString() });

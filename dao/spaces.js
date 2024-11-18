@@ -6,6 +6,7 @@ const fetchAllSpacesApply = async () => {
     .populate("communityStandardsId")
     .populate("appliancesId")
     .populate("userId")
+    .populate("reviews")
     .exec()
   } catch (error) {
     throw new Error(error.toString());
@@ -21,7 +22,7 @@ const fetchAllSpaces = async () => {
 
 const fetchAllSpaceFavorite = async () => {
   try {
-    return await Spaces.find({ favorite: true }).populate("appliancesId").exec()
+    return await Spaces.find({ favorite: true }).populate("appliancesId").populate("reviews").exec()
   } catch (error) {
     throw new Error(error.toString());
   }

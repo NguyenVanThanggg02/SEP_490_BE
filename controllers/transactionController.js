@@ -218,7 +218,7 @@ export const transactionConfirm = async (req, res) => {
 ///http://localhost:3000/addfund/result?partnerCode=MOMO&orderId=MOMO1731137931267&requestId=MOMO1731137931267&amount=1000&orderInfo=undefined+n%E1%BA%A1p+ti%E1%BB%81n+v%C3%A0o+t%C3%A0i+kho%E1%BA%A3n&orderType=momo_wallet&transId=4225107942&resultCode=0&message=Successful.&payType=qr&responseTime=1731137968770&extraData=&signature=2068ac90836a9aacdefd4995b58ed03f0b1f1d27046b7ca371b92175bb5437a6
 export const getAllTransaction = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const { userId, page = 1, limit = 10 } = req.query;
     if (!userId) {
       res.status(400).json({ message: "bad request" });
       return;
@@ -228,10 +228,13 @@ export const getAllTransaction = async (req, res) => {
       res.status(400).json({ message: "bad request" });
       return;
     }
-
-    const transactionList = await TransactionsModel.find({ userId }).sort({
+    const transactionList = await TransactionsModel.find({ userId })
+    .skip((page - 1) * limit) // Skip documents for previous pages
+    .limit(limit) // Limit results to the page size
+    .sort({
       createdAt: -1,
     });
+    const totalElement = await TransactionsModel.countDocuments({ userId });
     const dataRes = transactionList.map((transaction) => {
       return {
         transactionId: transaction._id.toString(),
@@ -244,7 +247,10 @@ export const getAllTransaction = async (req, res) => {
     });
     res
       .status(200)
-      .json({ balanceAmount: user.balanceAmount, transactionList: dataRes });
+      .json({ balanceAmount: user.balanceAmount, transactionList: dataRes, pagination: {
+        totalPage: Math.floor(totalElement / limit) + 1,
+        totalElement
+      } });
   } catch (error) {
     console.log(error);
     res.status(400).json({ message: "bad request" });
