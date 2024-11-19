@@ -1,28 +1,107 @@
 import Bookings from "../models/bookings.js";
 import { transactionDao } from "../dao/transactionDao.js";
 
-// Trả chủ space giờ + ngày
-async function plusDay() {
+// Trả chủ space giờ 
+async function plusHour() {
   try {
+    const currentTime = new Date();
+    const currentTimeStr = currentTime.toISOString().slice(11, 16);
     const bookingProcessList = await Bookings.find({
       ownerApprovalStatus: "accepted",
-      endDate: { $lt: new Date() },
-      rentalType: { $in: ["hour", "day"] },
-      plusStatus: { $ne: "full_plus" }
+      rentalType: "hour",
+      plusStatus: { $ne: "full_plus" },
+      $expr: {
+        $and: [
+          { $lt: ["$endDate", currentTime] }, 
+          {
+            $lt: [
+              {
+                $let: {
+                  vars: {
+                    latestEndTime: {
+                      $max: {
+                        $map: {
+                          input: "$selectedSlot",
+                          as: "slot",
+                          in: "$$slot.endTime",
+                        },
+                      },
+                    },
+                  },
+                  in: "$$latestEndTime",
+                },
+              },
+              currentTimeStr,
+            ],
+          },
+        ],
+      },
     })
       .populate("spaceId")
       .populate("refundTransId");
+      console.log(bookingProcessList)
     bookingProcessList.forEach(async (bookingProcess) => {
       let amount = Number(bookingProcess.totalAmount);
-      amount = Number(amount) - (bookingProcess.refundTransId ? Number(bookingProcess.refundTransId.amount) : 0);
+      amount =
+        Number(amount) -
+        (bookingProcess.refundTransId
+          ? Number(bookingProcess.refundTransId.amount)
+          : 0);
       if (amount > 0) {
-        const {transaction} = await transactionDao.transferMoneyBooking(
+        const { transaction } = await transactionDao.transferMoneyBooking(
           bookingProcess.spaceId.userId,
           "Cộng tiền",
           "Thành công",
           amount,
           `Tiền cho thuê không gian ${bookingProcess.spaceId.name}`
-        );        
+        );
+
+        await Bookings.updateOne(
+          { _id: bookingProcess._id.toString() },
+          {
+            $push: { plusTransId: transaction._id.toString() },
+            plusStatus: "full_plus",
+          }
+        );
+      } else {
+        await Bookings.updateOne(
+          { _id: bookingProcess._id.toString() },
+          { plusStatus: "full_plus" }
+        );
+      }
+    });
+  } catch (error) {
+    console.error("Error plus money", error);
+  }
+}
+
+// Trả chủ space ngày 
+async function plusDay() {
+  try {
+    const bookingProcessList = await Bookings.find({
+      ownerApprovalStatus: "accepted",
+      // endDate: { $lt: new Date() },
+      rentalType: "day",
+      plusStatus: { $ne: "full_plus" },
+    })
+      .populate("spaceId")
+      .populate("refundTransId");
+    bookingProcessList.forEach(async (bookingProcess) => {
+      let amount = Number(bookingProcess.totalAmount);
+      amount =
+        Number(amount) -
+        (bookingProcess.refundTransId
+          ? Number(bookingProcess.refundTransId.amount)
+          : 0);
+      if (amount > 0) {
+        const { transaction } = await transactionDao.transferMoneyBooking(
+          bookingProcess.spaceId.userId,
+          "Cộng tiền",
+          "Thành công",
+          amount,
+          `Tiền cho thuê không gian ${bookingProcess.spaceId.name}`
+        );
+
         await Bookings.updateOne(
           { _id: bookingProcess._id.toString() },
           {
@@ -197,4 +276,4 @@ async function plusMonth() {
   }
 }
 
-export const refundOwnerSpace = {plusDay, plusWeek, plusMonth}
+export const refundOwnerSpace = {plusHour,plusDay, plusWeek, plusMonth}

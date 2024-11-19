@@ -115,7 +115,8 @@ export const createBooking = async (req, res) => {
     await notificationDao.saveAndSendNotification(
       space.userId.toString(),
       `${user.fullname} đã booking ${space.name}`,
-      space.images && space.images.length > 0 ? space.images[0].url : null
+      space.images && space.images.length > 0 ? space.images[0].url : null,
+      `/order`
     );
     res
       .status(201)

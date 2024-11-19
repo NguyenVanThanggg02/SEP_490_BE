@@ -1,3 +1,4 @@
+import { notificationDao } from "../dao/index.js";
 import { transactionDao } from "../dao/transactionDao.js";
 import {
   createTransaction,
@@ -60,6 +61,13 @@ export const transactionCreate = async (req, res) => {
         status: "Khởi tạo",
         beneficiaryAccountNumber,
         beneficiaryBankCode
+      });
+      const adminList = await Users.find({ role: 1 });
+      adminList.forEach((admin) => {
+        notificationDao.saveAndSendNotification(
+          admin._id.toString(),
+          `${user.fullname} đã gửi yêu cầu rút tiền`, null, "/admin#manage-spaces"
+        );
       });
       res.status(200).json({ message: "Khởi tạo giao dịch thành công, yêu cầu của bạn sẽ được xử lí trong 2 - 3 ngày tới" });
       return;
