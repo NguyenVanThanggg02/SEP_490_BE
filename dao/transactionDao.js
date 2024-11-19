@@ -37,8 +37,10 @@ async function transferMoneyBooking(userId, type, status, amount, description, o
 
     if (type === "Cộng tiền") {
       const systemAccountBalance = await SystemProrperties.findOne({code: "system_account_balance"})
-      await SystemProrperties.updateOne({code: "system_account_balance"}, {value: Number(systemAccountBalance.value) - Number(amount)})
-      await Users.updateOne({_id: userId}, {balanceAmount: user.balanceAmount + Number(amount)})
+      const newAmount =  Number(systemAccountBalance.value) - Number(amount);
+      await SystemProrperties.updateOne({code: "system_account_balance"}, {value: newAmount})
+      const newUserAmount = user.balanceAmount + Number(amount);
+      await Users.updateOne({_id: userId}, {balanceAmount: newUserAmount})
 
       const transactionsModel = new TransactionsModel({
         userId,

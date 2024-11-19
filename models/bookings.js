@@ -81,6 +81,9 @@ const bookingsSchema = new Schema(
       type: String,
       enum: ["pending", "full_plus", "1_plus", "2_plus", "3_plus"],
       default: "pending",
+    },
+    reasonOwnerRejected: {
+      type: String,
     }
   },
   { timestamps: true }

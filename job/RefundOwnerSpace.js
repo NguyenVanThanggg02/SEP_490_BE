@@ -14,15 +14,15 @@ async function plusDay() {
       .populate("refundTransId");
     bookingProcessList.forEach(async (bookingProcess) => {
       let amount = Number(bookingProcess.totalAmount);
-      amount = Number(amount) - Number(bookingProcess.refundTransId.amount);
+      amount = Number(amount) - (bookingProcess.refundTransId ? Number(bookingProcess.refundTransId.amount) : 0);
       if (amount > 0) {
-        const transaction = await transactionDao.transferMoneyBooking(
+        const {transaction} = await transactionDao.transferMoneyBooking(
           bookingProcess.spaceId.userId,
           "Cộng tiền",
           "Thành công",
-          bookingProcess.amount,
+          amount,
           `Tiền cho thuê không gian ${bookingProcess.spaceId.name}`
-        );
+        );        
         await Bookings.updateOne(
           { _id: bookingProcess._id.toString() },
           {
@@ -55,9 +55,9 @@ async function plusWeek() {
       .populate("refundTransId");
     bookingProcessList.forEach(async (bookingProcess) => {
       let amount = Number(bookingProcess.totalAmount);
-      amount = Number(amount) - Number(bookingProcess.refundTransId.amount);
+      amount = Number(amount) - (bookingProcess.refundTransId ? Number(bookingProcess.refundTransId.amount) : 0);
       if (amount > 0) {
-        const transaction = await transactionDao.transferMoneyBooking(
+        const {transaction} = await transactionDao.transferMoneyBooking(
           bookingProcess.spaceId.userId,
           "Cộng tiền",
           "Thành công",
@@ -103,7 +103,7 @@ async function plusMonth() {
         amount = Number(amount) - Number(bookingProcess.refundTransId.amount);
         bookingProcess.plusTransId.forEach(plusTrans => amount = Number(amount) - Number(plusTrans.amount))
         if (amount > 0) {
-          const transaction = await transactionDao.transferMoneyBooking(
+          const {transaction} = await transactionDao.transferMoneyBooking(
             bookingProcess.spaceId.userId,
             "Cộng tiền",
             "Thành công",
@@ -123,7 +123,7 @@ async function plusMonth() {
         bookingProcess.plusTransId.forEach(plusTrans => amount = Number(amount) - Number(plusTrans.amount));
         if (now.getDate() === 8) {
           // Tuần đầu
-          const transaction = await transactionDao.transferMoneyBooking(
+          const {transaction} = await transactionDao.transferMoneyBooking(
             bookingProcess.spaceId.userId,
             "Cộng tiền",
             "Thành công",
@@ -139,7 +139,7 @@ async function plusMonth() {
           );
           if (now.getDate() === 15) {
             // Tuần đầu
-            const transaction = await transactionDao.transferMoneyBooking(
+            const {transaction} = await transactionDao.transferMoneyBooking(
               bookingProcess.spaceId.userId,
               "Cộng tiền",
               "Thành công",
@@ -156,7 +156,7 @@ async function plusMonth() {
           };
           if (now.getDate() === 22) {
             // Tuần đầu
-            const transaction = await transactionDao.transferMoneyBooking(
+            const {transaction} = await transactionDao.transferMoneyBooking(
               bookingProcess.spaceId.userId,
               "Cộng tiền",
               "Thành công",
@@ -173,7 +173,7 @@ async function plusMonth() {
           };
           if (now.getDate() === 1) {
             // Tuần đầu
-            const transaction = await transactionDao.transferMoneyBooking(
+            const {transaction} = await transactionDao.transferMoneyBooking(
               bookingProcess.spaceId.userId,
               "Cộng tiền",
               "Thành công",

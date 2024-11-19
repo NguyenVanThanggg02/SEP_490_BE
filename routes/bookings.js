@@ -317,7 +317,7 @@ bookingRouter.get("/spaces/:userId", async (req, res, next) => {
 
 bookingRouter.put("/updatestatus/:id", async (req, res, next) => {
   try {
-    const { ownerApprovalStatus, cancelReason } = req.body;
+    const { ownerApprovalStatus, reasonOwnerRejected } = req.body;
     // Validate the ownerApprovalStatus value
     if (!["pending", "accepted", "declined"].includes(ownerApprovalStatus)) {
       return res.status(400).json({ message: "Invalid owner approval status" });
@@ -328,7 +328,7 @@ bookingRouter.put("/updatestatus/:id", async (req, res, next) => {
     };
     // If the status is declined, add the cancelReason
     if (ownerApprovalStatus === "declined") {
-      updateData.cancelReason = cancelReason;
+      updateData.reasonOwnerRejected = reasonOwnerRejected;
     }
     const updatedBooking = await Bookings.findByIdAndUpdate(
       req.params.id,
