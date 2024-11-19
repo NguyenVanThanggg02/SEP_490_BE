@@ -234,7 +234,7 @@ bookingRouter.put("/:id/cancel", async (req, res) => {
 
     // Kiểm tra nếu trạng thái hoặc trạng thái phê duyệt của chủ sở hữu ngừng hủy
     if (
-      booking.ownerApprovalStatus === "declined" ||
+      // booking.ownerApprovalStatus === "declined" ||
       booking.status === "canceled"
     ) {
       return res
