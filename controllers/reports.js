@@ -18,10 +18,12 @@ const createReports = async (req, res) => {
 
     const space = await Spaces.findById(spaceId);
     const user = await Users.findById(userId);
+    const userAvatar = user?.avatar || "https://cellphones.com.vn/sforum/wp-content/uploads/2023/10/avatar-trang-4.jpg";
+
     await notificationDao.saveAndSendNotification(
       space.userId.toString(),
       `${user?.fullname} đã tố cáo space ${space?.name}`,
-      space.images && space.images.length > 0 ? space.images[0].url : null
+      userAvatar
     );
     res.status(200).json(report);
   } catch (error) {

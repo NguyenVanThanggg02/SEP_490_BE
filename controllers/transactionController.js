@@ -63,10 +63,12 @@ export const transactionCreate = async (req, res) => {
         beneficiaryBankCode
       });
       const adminList = await Users.find({ role: 1 });
+      const userAvatar = adminList?.avatar || "https://cellphones.com.vn/sforum/wp-content/uploads/2023/10/avatar-trang-4.jpg";
+
       adminList.forEach((admin) => {
         notificationDao.saveAndSendNotification(
           admin._id.toString(),
-          `${user.fullname} đã gửi yêu cầu rút tiền`, null, "/admin#manage-spaces"
+          `${user.fullname} đã gửi yêu cầu rút tiền`, userAvatar, "/admin#manage-spaces"
         );
       });
       res.status(200).json({ message: "Khởi tạo giao dịch thành công, yêu cầu của bạn sẽ được xử lí trong 2 - 3 ngày tới" });

@@ -6,6 +6,7 @@ import Spaces from "../models/spaces.js";
 import axios from "axios";
 import { mapboxToken } from "../helpers/constants.js";
 import { transactionDao } from "../dao/transactionDao.js";
+import { notificationDao } from "../dao/index.js";
 
 
 const bookingRouter = express.Router();
@@ -215,6 +216,12 @@ bookingRouter.put("/updateBookStatus/:id", async (req, res, next) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
+    // await notificationDao.saveAndSendNotification(
+    //   updatedBooking.userId.toString(),
+    //   `Lịch book của bạn đã ${ownerApprovalStatus}`,
+    //   null,
+    //   null
+    // );
     res.json(updatedBooking);
   } catch (error) {
     next(error);
