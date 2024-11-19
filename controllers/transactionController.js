@@ -61,7 +61,7 @@ export const transactionCreate = async (req, res) => {
         beneficiaryAccountNumber,
         beneficiaryBankCode
       });
-      res.status(200).json({ message: "Khởi tạo giao dịch thành công" });
+      res.status(200).json({ message: "Khởi tạo giao dịch thành công, yêu cầu của bạn sẽ được xử lí trong 2 - 3 ngày tới" });
       return;
     }
 
