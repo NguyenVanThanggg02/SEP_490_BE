@@ -14,7 +14,7 @@ const fetchAllSpacesApply = async () => {
 }
 const fetchAllSpaces = async () => {
   try {
-    return await Spaces.find({}).populate("appliancesId").populate("userId").exec()
+    return await Spaces.find({}).lean().populate("reviews").populate("userId").populate("appliancesId").exec()
   } catch (error) {
     throw new Error(error.toString());
   }

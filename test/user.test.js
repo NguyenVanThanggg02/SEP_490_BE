@@ -102,6 +102,34 @@ khi service trả về giữ liệu như vậy api chạy có đúng yêu cầu 
     });
   });
 
+  describe("updateUser", () => {
+    it("should update user and return status 200", async () => {
+      const mockUpdatedUser = { id: "123", name: "Updated User" };
+      req.params.id = "123";
+      req.body = { name: "Updated User" };
+  
+      sandbox.stub(userDao, "updateUser").resolves(mockUpdatedUser);
+  
+      await userController.updateUser(req, res);
+  
+      expect(res.status.calledWith(200)).to.be.true;
+      expect(res.json.calledWith(mockUpdatedUser)).to.be.true;
+    });
+  
+    it("should handle errors and return status 500", async () => {
+      req.params.id = "123";
+      req.body = { name: "Updated User" };
+  
+      sandbox.stub(userDao, "updateUser").rejects(new Error("Database error"));
+  
+      await userController.updateUser(req, res);
+  
+      expect(res.status.calledWith(500)).to.be.true;
+      expect(res.json.calledWith({ error: "Error: Database error" })).to.be.true;
+    });
+  });
+  
+
   describe("changePass", () => {
     it("should update password successfully with status 200", async () => {
       req.params.username = "testuser";
@@ -188,7 +216,6 @@ khi service trả về giữ liệu như vậy api chạy có đúng yêu cầu 
         sandbox.stub(nodemailer, "createTransport").returns({ sendMail: sendMailStub });
       
         await userController.forgetPass(req, res);
-        console.log("Response sent:", res.send.args);
         expect(res.send.calledWith({ Status: "Lỗi khi gửi mail" })).to.be.true;
       });
       

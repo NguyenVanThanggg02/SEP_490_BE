@@ -29,136 +29,137 @@ describe("Space Controller-Tests", () => {
     sandbox.restore();
   });
 
-  describe("getAllSpacesApply", () => {
-    // đối với get user list có hai đầu status là 200 và 500 sẽ tương đương 2 test case test output ra được status đó
-    it("should return all users with status 200", async () => {
-    // Tạo đây giả sử có một user có username là testuser
-      const mockSpaces = [{
-        locationPoint: {
-            type: "Point",
-            coordinates: [
-                105.77499242871824,
-                19.804795582985733
-            ]
-        },
-        _id: "672de180a29a7d1dcce3b7a9",
-        latLng: [
-            19.804795582985733,
-            105.77499242871824
-        ],
-        name: "Phòng làm việc số mới",
-        description: "",
-        location: "Ba Đình, Thanh Hóa, Thanh Hóa",
-        area: "40",
-        rulesId: "672de17fa29a7d1dcce3b7a2",
-        userId: {
-            _id: "6639786d743f79c9b97fc1c2",
-            fullname: "Nguyen Van A",
-            username: "vana",
-            gmail: "nguyenducdat0610@gmail.commm",
-            password: "$2b$10$7vF54QkF6KjtkuffbjpZHeNwkFjeLJD7ZtEYk7LSLBn0ZFB/7x4lu",
-            gender: "Male",
-            birthday: "2002-02-05",
-            avatar: "https://res.cloudinary.com/dakpa1ph2/image/upload/v1730817825/spacehub/img_user/hklxhyzctefdxcfk4shc.webp",
-            phone: "03682338",
-            address: "Hà Nội",
-            role: 2,
-            isBan: false,
-            createdAt: "2024-09-17T08:00:00.000Z",
-            updatedAt: "2024-11-05T14:44:09.029Z",
-            firstLogin: false,
-            needs: "671cfa315b5c091e0b772cf0",
-            bankAccounts: [],
-            defaultBankAccount: null,
-            isSpaceOwners: false
-        },
-        pricePerHour: 123,
-        pricePerDay: 1234,
-        pricePerWeek: 1234,
-        pricePerMonth: 1234,
-        images: [
-            {
-                public_id: "spacehub/img_space/jjbymdfwhpwxceb18l0e",
-                url: "https://res.cloudinary.com/dakpa1ph2/image/upload/v1731060092/spacehub/img_space/jjbymdfwhpwxceb18l0e.webp",
-                _id: "672de180a29a7d1dcce3b7aa"
-            }
-        ],
-        censorship: "Chấp nhận",
-        status: "Đang sử dụng",
-        categoriesId: "66eafbb0cb37101e8e8f8946",
-        appliancesId: {
-            _id: "672de180a29a7d1dcce3b7a4",
-            name: "",
-            appliances: [
-                {
-                    name: "Máy chiếu",
-                    iconName: "Videocam",
-                    _id: "672de180a29a7d1dcce3b7a5"
-                },
-                {
-                    name: "WiFi",
-                    iconName: "Wifi",
-                    _id: "672de180a29a7d1dcce3b7a6"
-                },
-                {
-                    name: "Ghế giáo viên",
-                    iconName: "EventSeat",
-                    _id: "672de180a29a7d1dcce3b7a7"
-                }
-            ],
-            categoryId: "66eafbb0cb37101e8e8f8946",
-            createdAt: "2024-11-08T10:01:36.006Z",
-            updatedAt: "2024-11-08T10:22:25.174Z",
-            __v: 0
-        },
-        isGoldenHour: true,
-        goldenHourDetails: [
-            {
-                startTime: "03:00",
-                endTime: "04:00",
-                priceIncrease: 222,
-                _id: "672de180a29a7d1dcce3b7ac"
-            },
-            {
-                startTime: "04:00",
-                endTime: "05:00",
-                priceIncrease: 222,
-                _id: "672de180a29a7d1dcce3b7ad"
-            }
-        ],
-        reviews: [],
-        reportCount: 0,
-        favorite: false,
-        isUpdate: false
-    }
-    ];
-      // khi gọi tới hàm fetchAllUsers của DAO sẽ trả về testuser có nghĩa khi gọi tới hàm list có giữ liệu đầu ra
-      sandbox.stub(spaceDao, "fetchAllSpacesApply").resolves(mockSpaces);
+    describe("getAllSpacesApply", () => {
+      // đối với get user list có hai đầu status là 200 và 500 sẽ tương đương 2 test case test output ra được status đó
+      it("should return all users with status 200", async () => {
+      // Tạo đây giả sử có một user có username là testuser
+        const mockSpaces = [{
+          locationPoint: {
+              type: "Point",
+              coordinates: [
+                  105.77499242871824,
+                  19.804795582985733
+              ]
+          },
+          _id: "672de180a29a7d1dcce3b7a9",
+          latLng: [
+              19.804795582985733,
+              105.77499242871824
+          ],
+          name: "Phòng làm việc số mới",
+          description: "",
+          location: "Ba Đình, Thanh Hóa, Thanh Hóa",
+          area: "40",
+          rulesId: "672de17fa29a7d1dcce3b7a2",
+          userId: {
+              _id: "6639786d743f79c9b97fc1c2",
+              fullname: "Nguyen Van A",
+              username: "vana",
+              gmail: "nguyenducdat0610@gmail.commm",
+              password: "$2b$10$7vF54QkF6KjtkuffbjpZHeNwkFjeLJD7ZtEYk7LSLBn0ZFB/7x4lu",
+              gender: "Male",
+              birthday: "2002-02-05",
+              avatar: "https://res.cloudinary.com/dakpa1ph2/image/upload/v1730817825/spacehub/img_user/hklxhyzctefdxcfk4shc.webp",
+              phone: "03682338",
+              address: "Hà Nội",
+              role: 2,
+              isBan: false,
+              createdAt: "2024-09-17T08:00:00.000Z",
+              updatedAt: "2024-11-05T14:44:09.029Z",
+              firstLogin: false,
+              needs: "671cfa315b5c091e0b772cf0",
+              bankAccounts: [],
+              defaultBankAccount: null,
+              isSpaceOwners: false
+          },
+          pricePerHour: 123,
+          pricePerDay: 1234,
+          pricePerWeek: 1234,
+          pricePerMonth: 1234,
+          images: [
+              {
+                  public_id: "spacehub/img_space/jjbymdfwhpwxceb18l0e",
+                  url: "https://res.cloudinary.com/dakpa1ph2/image/upload/v1731060092/spacehub/img_space/jjbymdfwhpwxceb18l0e.webp",
+                  _id: "672de180a29a7d1dcce3b7aa"
+              }
+          ],
+          censorship: "Chấp nhận",
+          status: "Đang sử dụng",
+          categoriesId: "66eafbb0cb37101e8e8f8946",
+          appliancesId: {
+              _id: "672de180a29a7d1dcce3b7a4",
+              name: "",
+              appliances: [
+                  {
+                      name: "Máy chiếu",
+                      iconName: "Videocam",
+                      _id: "672de180a29a7d1dcce3b7a5"
+                  },
+                  {
+                      name: "WiFi",
+                      iconName: "Wifi",
+                      _id: "672de180a29a7d1dcce3b7a6"
+                  },
+                  {
+                      name: "Ghế giáo viên",
+                      iconName: "EventSeat",
+                      _id: "672de180a29a7d1dcce3b7a7"
+                  }
+              ],
+              categoryId: "66eafbb0cb37101e8e8f8946",
+              createdAt: "2024-11-08T10:01:36.006Z",
+              updatedAt: "2024-11-08T10:22:25.174Z",
+              __v: 0
+          },
+          isGoldenHour: true,
+          goldenHourDetails: [
+              {
+                  startTime: "03:00",
+                  endTime: "04:00",
+                  priceIncrease: 222,
+                  _id: "672de180a29a7d1dcce3b7ac"
+              },
+              {
+                  startTime: "04:00",
+                  endTime: "05:00",
+                  priceIncrease: 222,
+                  _id: "672de180a29a7d1dcce3b7ad"
+              }
+          ],
+          reviews: [],
+          reportCount: 0,
+          favorite: false,
+          isUpdate: false
+      }
+      ];
+        // khi gọi tới hàm fetchAllUsers của DAO sẽ trả về testuser có nghĩa khi gọi tới hàm list có giữ liệu đầu ra
+        sandbox.stub(spaceDao, "fetchAllSpacesApply").resolves(mockSpaces);
 
-      // gọi tới api get list
-      await spaceController.getAllSpacesApply(req, res);
+        // gọi tới api get list
+        await spaceController.getAllSpacesApply(req, res);
 
-      // check status có đúng 200 không
-      expect(res.status.calledWith(200)).to.be.true;
-      expect(res.json.calledWith(mockSpaces)).to.be.true;
+        // check status có đúng 200 không
+        expect(res.status.calledWith(200)).to.be.true;
+        expect(res.json.calledWith(mockSpaces)).to.be.true;
+      });
+
+      // test case tiếp theo cần test là 500
+      it("should handle errors and return status 500", async () => {
+      // đầu status 500 có nghĩa là đã sảy ra lỗi trong quá trình query dữ liệu
+      // tương tự tới test case bên trên nhưng thai vì trả ra user thì set khi gọi tới hàm fetchAllUsers của DAo sẽ trả về một exception
+        sandbox.stub(spaceDao, "fetchAllSpacesApply").rejects(new Error("Database error"));
+
+        // gọi api
+        await spaceController.getAllSpacesApply(req, res);
+
+        // test xem api có trả về lỗi hay không
+        expect(res.status.calledWith(500)).to.be.true;
+        expect(res.json.calledWith({ error: "Error: Database error" })).to.be.true;
+      });
     });
-
-    // test case tiếp theo cần test là 500
-    it("should handle errors and return status 500", async () => {
-    // đầu status 500 có nghĩa là đã sảy ra lỗi trong quá trình query dữ liệu
-    // tương tự tới test case bên trên nhưng thai vì trả ra user thì set khi gọi tới hàm fetchAllUsers của DAo sẽ trả về một exception
-      sandbox.stub(spaceDao, "fetchAllSpacesApply").rejects(new Error("Database error"));
-
-      // gọi api
-      await spaceController.getAllSpacesApply(req, res);
-
-      // test xem api có trả về lỗi hay không
-      expect(res.status.calledWith(500)).to.be.true;
-      expect(res.json.calledWith({ error: "Error: Database error" })).to.be.true;
-    });
-  });
 
   describe("getAllSpaces", () => {
+
     // đối với get user list có hai đầu status là 200 và 500 sẽ tương đương 2 test case test output ra được status đó
     it("should return all users with status 200", async () => {
     // Tạo đây giả sử có một user có username là testuser

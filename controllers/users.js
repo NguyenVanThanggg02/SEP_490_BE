@@ -104,14 +104,12 @@ const forgetPass = async (req, res) => {
   
       transporter.sendMail(mailOptions, function (error, info) {
         if (error) {
-          console.log(error);
           return res.send({ Status: "Lỗi khi gửi mail" });
         } else {
           return res.send({ Status: "Thành công" });
         }
       });
     } catch (error) {
-      console.error(error);
       return res.send({ Status: "Error", Error: error.message });
     }
   };

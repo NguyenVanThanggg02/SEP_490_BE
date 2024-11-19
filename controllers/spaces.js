@@ -20,7 +20,7 @@ const getAllSpacesApply = async (req, res) => {
 }
 const getAllSpaces = async (req, res) => {
   try {
-    const allSpaces = await Spaces.find({}).lean().populate("reviews").populate("userId");
+    const allSpaces = await spaceDao.fetchAllSpaces();
     res.status(200).json(allSpaces)
   } catch (error) {
     res.status(500).json({ error: error.toString() })
@@ -460,7 +460,6 @@ const removeImages = async (req, res) => {
       return res.status(400).json({ message: 'Failed to delete image', result });
     }
   } catch (error) {
-    console.error('Error deleting image:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
