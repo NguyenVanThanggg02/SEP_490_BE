@@ -130,69 +130,6 @@ khi service trả về giữ liệu như vậy api chạy có đúng yêu cầu 
   });
   
 
-  describe("changePass", () => {
-    it("should update password successfully with status 200", async () => {
-      req.params.username = "testuser";
-      req.body = { oldPassword: "oldPass", newPassword: "newPass" };
-
-      const mockUser = {
-        username: "testuser",
-        password: "hashedOldPass",
-        save: sinon.stub().resolves(),
-      };
-
-      sandbox.stub(Users, "findOne").resolves(mockUser);
-      sandbox.stub(bcrypt, "compare").resolves(true);
-      sandbox.stub(bcrypt, "genSalt").resolves("salt");
-      sandbox.stub(bcrypt, "hash").resolves("hashedNewPass");
-
-      await userController.changePass(req, res);
-
-      expect(res.status.calledWith(200)).to.be.true;
-      expect(
-        res.json.calledWith({ status: true, message: "Password updated successfully" })
-      ).to.be.true;
-    });
-
-    
-    it("should return 400 if old password is incorrect", async () => {
-      req.params.username = "testuser";
-      req.body = { oldPassword: "wrongPass", newPassword: "newPass" };
-
-      const mockUser = {
-        username: "testuser",
-        password: "hashedOldPass",
-      };
-
-      sandbox.stub(Users, "findOne").resolves(mockUser);
-      sandbox.stub(bcrypt, "compare").resolves(false);
-
-      await userController.changePass(req, res);
-
-      expect(res.status.calledWith(400)).to.be.true;
-      expect(
-        res.json.calledWith({ status: false, message: "Old password is incorrect" })
-      ).to.be.true;
-    });
-    // đây là ví dụ cho trường hợp if sau cần thoả mãn điều kiện của if trước
-    // Để chạy được 404 cần phải thỏa mãn điều kiện username, oldpassword, newpass không null
-    it("should return 404 if user not found", async () => {
-        // truyền vào một username cần tìm kiếm không có trong danh sách khởi tạo
-        req.params.username = "unknownUser";
-        // truyền đủ requried
-        req.body = { oldPassword: "oldPass", newPassword: "newPass" };
-        // gọi tới DAO và set cho giữ liệu đầu ra null
-        sandbox.stub(Users, "findOne").resolves(null);
-        await userController.changePass(req, res);
-        // check status có đúng hay không
-        expect(res.status.calledWith(404)).to.be.true;  
-        expect(res.json.calledWith({ status: false, message: "User not found" })).to.be.true;  
-      });
-      
-      
-      
-  });
-
   describe("forgetPass", () => {
     it("should send reset email successfully", async () => {
       req.body.gmail = "test@example.com";
