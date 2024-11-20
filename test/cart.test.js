@@ -1,6 +1,5 @@
 import cartsController from "../controllers/carts.js";
 import { cartDao } from "../dao/index.js";
-import bcrypt from "bcrypt";
 import { expect } from 'chai';
 import sinon from 'sinon';
 

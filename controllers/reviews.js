@@ -19,7 +19,7 @@ const getReviewBySId = async (req, res) => {
 const deleteReviewBySId = async (req, res) => {
   try {
     const removeReview = await reviewDao.deleteReviewBySId(req.params.id);
-    if (removeReview) {
+    if (removeReview.deletedCount > 0) {
       res.status(200).json({ message: "Review deleted successfully" });
     } else {
       res.status(404).json({ message: "Not found review" });
