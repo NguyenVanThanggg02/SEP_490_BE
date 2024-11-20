@@ -39,6 +39,9 @@ const transactionSchema = new Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "transactions",
     },
+    reasonRejected:{
+      type: String
+    }
   },
   {
     timestamps: true,

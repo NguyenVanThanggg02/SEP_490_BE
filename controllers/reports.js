@@ -13,12 +13,26 @@ const getAllReports = async(req, res) =>{
 
 const createReports = async (req, res) => {
   try {
-    const { reasonId, userId, spaceId } = req.body;
-    const report = await reportsDao.createReports(reasonId, userId, spaceId);
+    const { reasonId, userId, spaceId, customReason, } = req.body;
+    const report = await reportsDao.createReports(reasonId, userId, spaceId, customReason,);
 
     const space = await Spaces.findById(spaceId);
     const user = await Users.findById(userId);
     const userAvatar = user?.avatar || "https://cellphones.com.vn/sforum/wp-content/uploads/2023/10/avatar-trang-4.jpg";
+
+    if (space.reportCount >= 3) {
+      await Spaces.findByIdAndUpdate(
+        spaceId,
+        { censorship: "Chờ duyệt" },
+        { new: true }
+      );
+    
+      await notificationDao.saveAndSendNotification(
+        space.userId.toString(),
+        `${space.name} đã chuyển sang trạng thái thành chờ duyệt do bị tố cáo quá 3 lần.`,
+        userAvatar
+      );
+    }
 
     await notificationDao.saveAndSendNotification(
       space.userId.toString(),
