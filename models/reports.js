@@ -2,9 +2,14 @@ import mongoose, { Schema } from "mongoose";
 
 const reportsSchema = new Schema(
   {
-    reasonId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "reasons",
+    reasonId: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "reasons",
+      },
+    ],
+    customReason: {
+      type: String, 
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,

@@ -6,6 +6,7 @@ import Spaces from "../models/spaces.js";
 import axios from "axios";
 import { mapboxToken } from "../helpers/constants.js";
 import { transactionDao } from "../dao/transactionDao.js";
+import { notificationDao } from "../dao/index.js";
 
 
 const bookingRouter = express.Router();
@@ -335,11 +336,25 @@ bookingRouter.put("/updatestatus/:id", async (req, res, next) => {
       updateData,
       { new: true }
     )
-      .populate("userId")
-      .populate("spaceId");
+    .populate({path: "userId", select: "fullname avatar"})     
+    .populate("spaceId");
     if (!updatedBooking) {
       return res.status(404).json({ message: "Booking not found" });
     }
+    
+    let notificationMessage = "";
+    if (ownerApprovalStatus === "accepted") {
+      notificationMessage = "Lịch book của bạn đã được chấp nhận";
+    } else if (ownerApprovalStatus === "declined") {
+      notificationMessage = "Lịch book của bạn đã bị từ chối";
+    }
+
+    await notificationDao.saveAndSendNotification(
+      updatedBooking.userId._id.toString(),
+      notificationMessage,
+      updatedBooking.userId.avatar,
+      "/history"
+    );
     res.json(updatedBooking);
   } catch (error) {
     next(error);

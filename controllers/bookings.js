@@ -39,8 +39,8 @@ export const createBooking = async (req, res) => {
     // Kiểm tra các trường dữ liệu trước khi lưu
     if (!userId || !spaceId || !startDate || !endDate || !selectedSlots || !selectedDates) {
       return res.status(400).json({ message: "Missing required fields." });
+      
     }
-
     if (Number(totalAmount) > user.balanceAmount) {
       return res.status(400).json({ message: "Số dư không đủ để thực hiện giao dịch" });
     }
@@ -112,10 +112,13 @@ export const createBooking = async (req, res) => {
     });
 
     await newBooking.save();
+    const userAvatar = user?.avatar || "https://cellphones.com.vn/sforum/wp-content/uploads/2023/10/avatar-trang-4.jpg";
+
     await notificationDao.saveAndSendNotification(
       space.userId.toString(),
       `${user.fullname} đã booking ${space.name}`,
-      space.images && space.images.length > 0 ? space.images[0].url : null
+      userAvatar,
+      `/order`
     );
     res
       .status(201)

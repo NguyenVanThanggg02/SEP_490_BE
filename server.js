@@ -198,6 +198,10 @@ server.listen(Port, async () => {
     console.error("Database connection failed", error);
   }
 });
+
+cron.schedule("* * * * *", refundOwnerSpace.plusHour)
+
+
 cron.schedule("* * * * *", refundOwnerSpace.plusDay)
 
 cron.schedule("0 0 * * 3", refundOwnerSpace.plusWeek);
