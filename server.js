@@ -193,7 +193,7 @@ io.on("connection", (socket) => {
 server.listen(Port, async () => {
   try {
     await connectDB();
-    console.log(`Web server running on http://localhost:9999`);
+    console.log(`Web server running on http://localhost:${Port}`);
   } catch (error) {
     console.error("Database connection failed", error);
   }
