@@ -14,12 +14,13 @@ const fetchAllReports = async () => {
   }
 };
 
-const createReports = async (reasonId, userId, spaceId) => {
+const createReports = async (reasonId, userId, spaceId, customReason) => {
   try {
     const createReport = await Reports.create({
       reasonId,
       userId,
       spaceId,
+      customReason
     });
     await Spaces.findByIdAndUpdate(
       spaceId,

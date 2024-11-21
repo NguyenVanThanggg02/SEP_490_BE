@@ -1,3 +1,4 @@
+import { notificationDao } from "../dao/index.js";
 import { transactionDao } from "../dao/transactionDao.js";
 import {
   createTransaction,
@@ -61,7 +62,16 @@ export const transactionCreate = async (req, res) => {
         beneficiaryAccountNumber,
         beneficiaryBankCode
       });
-      res.status(200).json({ message: "Khởi tạo giao dịch thành công" });
+      const adminList = await Users.find({ role: 1 });
+      const userAvatar = user?.avatar || "https://cellphones.com.vn/sforum/wp-content/uploads/2023/10/avatar-trang-4.jpg";
+
+      adminList.forEach((admin) => {
+        notificationDao.saveAndSendNotification(
+          admin._id.toString(),
+          `${user.fullname} đã gửi yêu cầu rút tiền`, userAvatar, "/admin#manage-spaces"
+        );
+      });
+      res.status(200).json({ message: "Khởi tạo giao dịch thành công, yêu cầu của bạn sẽ được xử lí trong 2 - 3 ngày tới" });
       return;
     }
 
@@ -243,6 +253,7 @@ export const getAllTransaction = async (req, res) => {
         type: transaction.type,
         status: transaction.status,
         createdAt: transaction.createdAt.toLocaleString(),
+        reasonRejected: transaction.reasonRejected
       };
     });
     res
@@ -301,9 +312,9 @@ export const adminGetAllTransaction = async (req, res) => {
 
 export const adminConfirmTransaction = async (req, res) => {
   try {
-    const { transactionId, result } = req.body;
+    const { transactionId, result,reasonRejected } = req.body;
     console.log(transactionId)
-    const transaction = await TransactionsModel.findById({ _id: transactionId }).populate({path: "userId", select: "fullname"});
+    const transaction = await TransactionsModel.findById({ _id: transactionId }).populate({path: "userId", select: "fullname avatar"});
 
     if (!transaction) {
       res.status(400).json({ message: "Yêu cầu không hợp lệ" });
@@ -333,17 +344,29 @@ export const adminConfirmTransaction = async (req, res) => {
 
     if (result === "Đồng ý - Xác nhận") {
       await TransactionsModel.updateOne({_id: transactionId}, {status: "Thành công"})
+      await notificationDao.saveAndSendNotification(
+        transaction.userId._id.toString(),
+        "Yêu cầu rút tiền của bạn đã được phê duyệt.",
+        transaction.userId.avatar,
+        "/addfund"
+      );
       res.status(200).json({ message: "Xác nhận thanh toán giao dịch rút tiền thành công" });
       return
     }
 
     if (result === "Từ chối - Xác nhận") {
-      await TransactionsModel.updateOne({_id: transactionId}, {status: "Thất bại"})   
+      await TransactionsModel.updateOne({_id: transactionId}, {status: "Thất bại", reasonRejected: reasonRejected})   
       
       const user = await Users.findById(transaction.userId)
       await Users.updateOne(
         { _id: transaction.userId },
         { balanceAmount: user.balanceAmount + Number(transaction.amount) }
+      );
+      await notificationDao.saveAndSendNotification(
+        transaction.userId._id.toString(),
+        "Yêu cầu rút tiền của bạn đã bị từ chối.",
+        transaction.userId.avatar,
+        "/addfund"
       );
       res.status(200).json({ message: "Đã từ chối giao dịch rút tiền" });
       return

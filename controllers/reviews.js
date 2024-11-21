@@ -2,6 +2,8 @@ import { reviewDao } from "../dao/index.js";
 import Bookings from "../models/bookings.js";
 import Reviews from "../models/reviews.js";
 import Spaces from "../models/spaces.js";
+import { notificationDao } from "../dao/index.js";
+import Users from "../models/users.js";
 
 const getReviewBySId = async (req, res) => {
   try {
@@ -70,6 +72,17 @@ const createReview = async (req, res) => {
     await Spaces.findByIdAndUpdate(spaceId, {
       $push: { reviews: newReview._id },
     }).lean();
+    const space = await Spaces.findById(spaceId);
+    const user = await Users.findById(userId);
+    const notificationUrl = `/spaces/${spaceId}`;
+    const userAvatar = user?.avatar || "https://cellphones.com.vn/sforum/wp-content/uploads/2023/10/avatar-trang-4.jpg";
+
+    await notificationDao.saveAndSendNotification(
+      space.userId.toString(),
+      `${user?.fullname} đã đánh giá space ${space?.name}`,
+      userAvatar,
+      notificationUrl
+    );
 
     res.status(201).json({ message: "review added successfully", newReview });
   } catch (error) {

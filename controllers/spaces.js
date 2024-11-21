@@ -20,7 +20,7 @@ const getAllSpacesApply = async (req, res) => {
 }
 const getAllSpaces = async (req, res) => {
   try {
-    const allSpaces = await Spaces.find({}).lean().populate("reviews").populate("userId");
+    const allSpaces = await spaceDao.fetchAllSpaces();
     res.status(200).json(allSpaces)
   } catch (error) {
     res.status(500).json({ error: error.toString() })
@@ -120,7 +120,7 @@ const createNewSpace = async (req, res) => {
       userId,
       pricePerHour,
       pricePerDay,
-      pricePerWeek,
+      // pricePerWeek,
       pricePerMonth,
       images,
       censorship,
@@ -172,7 +172,7 @@ const createNewSpace = async (req, res) => {
       userId,
       pricePerHour,
       pricePerDay,
-      pricePerWeek,
+      // pricePerWeek,
       pricePerMonth,
       images: formattedImages,
       censorship,
@@ -215,7 +215,7 @@ const updateSpace = async (req, res) => {
       rulesId,
       pricePerHour,
       pricePerDay,
-      pricePerWeek,
+      // pricePerWeek,
       pricePerMonth,
       images,
       location,
@@ -248,7 +248,7 @@ const updateSpace = async (req, res) => {
       name,
       pricePerHour,
       pricePerDay,
-      pricePerWeek,
+      // pricePerWeek,
       pricePerMonth,
       images: formattedImages,
       location,

@@ -6,6 +6,7 @@ import Spaces from "../models/spaces.js";
 import axios from "axios";
 import { mapboxToken } from "../helpers/constants.js";
 import { transactionDao } from "../dao/transactionDao.js";
+import { notificationDao } from "../dao/index.js";
 
 
 const bookingRouter = express.Router();
@@ -234,7 +235,7 @@ bookingRouter.put("/:id/cancel", async (req, res) => {
 
     // Kiểm tra nếu trạng thái hoặc trạng thái phê duyệt của chủ sở hữu ngừng hủy
     if (
-      booking.ownerApprovalStatus === "declined" ||
+      // booking.ownerApprovalStatus === "declined" ||
       booking.status === "canceled"
     ) {
       return res
@@ -317,7 +318,7 @@ bookingRouter.get("/spaces/:userId", async (req, res, next) => {
 
 bookingRouter.put("/updatestatus/:id", async (req, res, next) => {
   try {
-    const { ownerApprovalStatus, cancelReason } = req.body;
+    const { ownerApprovalStatus, reasonOwnerRejected } = req.body;
     // Validate the ownerApprovalStatus value
     if (!["pending", "accepted", "declined"].includes(ownerApprovalStatus)) {
       return res.status(400).json({ message: "Invalid owner approval status" });
@@ -328,18 +329,32 @@ bookingRouter.put("/updatestatus/:id", async (req, res, next) => {
     };
     // If the status is declined, add the cancelReason
     if (ownerApprovalStatus === "declined") {
-      updateData.cancelReason = cancelReason;
+      updateData.reasonOwnerRejected = reasonOwnerRejected;
     }
     const updatedBooking = await Bookings.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true }
     )
-      .populate("userId")
-      .populate("spaceId");
+    .populate({path: "userId", select: "fullname avatar"})     
+    .populate("spaceId");
     if (!updatedBooking) {
       return res.status(404).json({ message: "Booking not found" });
     }
+    
+    let notificationMessage = "";
+    if (ownerApprovalStatus === "accepted") {
+      notificationMessage = "Lịch book của bạn đã được chấp nhận";
+    } else if (ownerApprovalStatus === "declined") {
+      notificationMessage = "Lịch book của bạn đã bị từ chối";
+    }
+
+    await notificationDao.saveAndSendNotification(
+      updatedBooking.userId._id.toString(),
+      notificationMessage,
+      updatedBooking.userId.avatar,
+      "/history"
+    );
     res.json(updatedBooking);
   } catch (error) {
     next(error);
