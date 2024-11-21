@@ -5,6 +5,8 @@ import bookingDetail from "../models/bookingDetails.js";
 import Spaces from "../models/spaces.js";
 import axios from "axios";
 import { mapboxToken } from "../helpers/constants.js";
+import { transactionDao } from "../dao/transactionDao.js";
+import { notificationDao } from "../dao/index.js";
 
 
 const bookingRouter = express.Router();
@@ -49,7 +51,8 @@ bookingRouter.put("/update-status/:id", async (req, res, next) => {
       req.params.id,
       { status, cancelReason: status === "canceled" ? cancelReason : undefined }, // Cập nhật cancelReason chỉ khi status là "canceled"
       { new: true }
-    ).populate("userId");
+    ).populate("userId")
+    .populate("spaceId");;
 
     if (!updatedBooking) {
       return res.status(404).json({ message: "Không tìm thấy booking" });
@@ -57,10 +60,11 @@ bookingRouter.put("/update-status/:id", async (req, res, next) => {
     // Nếu trạng thái là "completed", gửi email
 
     if (status === "completed") {
-      const tenantEmail = updatedBooking.userId.gmail; // Giả sử bạn có trường email trong user
-      console.log(tenantEmail);
+      await transactionDao.transferMoneyBooking(updatedBooking.userId._id.toString(), "Hoàn tiền", "Thành công", updatedBooking.totalAmount, `Hoàn tiền ${updatedBooking.spaceId.name}`)
+      // const tenantEmail = updatedBooking.userId.gmail; // Giả sử bạn có trường email trong user
+      // console.log(tenantEmail);
 
-      await sendEmailBookingCompleted.sendEmailBookingCompleted(tenantEmail, updatedBooking);
+      // await sendEmailBookingCompleted.sendEmailBookingCompleted(tenantEmail, updatedBooking);
     }
 
     res.json(updatedBooking);
@@ -124,18 +128,17 @@ bookingRouter.get("/top-spaces", async (req, res) => {
     console.log(error.message);
     return res
       .status(500)
-      .json({ message: "Error retrieving the top spaces" });
+      .json({ message: "Error retrieving the top products" });
   }
 });
+
 
 bookingRouter.get("/near-spaces", async (req, res) => {
   try {
     const {lat, lng} = req.query;
     let result = []
-    const query = { censorship: "Chấp nhận" };
     if (lat && lng) {
       result = await Spaces.find({
-        ...query,
         locationPoint: {
               $near: {
                   $geometry: {
@@ -147,7 +150,7 @@ bookingRouter.get("/near-spaces", async (req, res) => {
       })
       .limit(3);
     } else {
-      result = await Spaces.find(query)
+      result = await Spaces.find()
         .sort({ updatedAt: -1 }) 
         .limit(3);
     }
@@ -176,7 +179,46 @@ bookingRouter.get("/near-spaces", async (req, res) => {
     console.log(error.message);
     return res
       .status(500)
-      .json({ message: "Lỗi khi lấy địa điểm gần nhất" });
+      .json({ message: "Error retrieving the top products" });
+  }
+});
+
+
+//Duyệt booking của người dùng muốn thuê...
+bookingRouter.put("/updateBookStatus/:id", async (req, res, next) => {
+  try {
+    const { ownerApprovalStatus, cancelReason } = req.body;
+
+    // Validate the ownerApprovalStatus value
+    if (!["pending", "accepted", "declined"].includes(ownerApprovalStatus)) {
+      return res.status(400).json({ message: "Invalid owner approval status" });
+    }
+
+    // Prepare the update data
+    const updateData = {
+      ownerApprovalStatus,
+    };
+
+    // If the status is declined, add the cancelReason
+    if (ownerApprovalStatus === "declined") {
+      updateData.cancelReason = cancelReason;
+    }
+
+    const updatedBooking = await Bookings.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    )
+      .populate("userId")
+      .populate("spaceId");
+
+    if (!updatedBooking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    res.json(updatedBooking);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -193,7 +235,7 @@ bookingRouter.put("/:id/cancel", async (req, res) => {
 
     // Kiểm tra nếu trạng thái hoặc trạng thái phê duyệt của chủ sở hữu ngừng hủy
     if (
-      booking.ownerApprovalStatus === "declined" ||
+      // booking.ownerApprovalStatus === "declined" ||
       booking.status === "canceled"
     ) {
       return res
@@ -251,5 +293,72 @@ bookingRouter.put("/:id/cancel", async (req, res) => {
   }
 });
 
+
+// lấy các đơn book của người cho thuê
+bookingRouter.get("/spaces/:userId", async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const bookings = await Bookings.find({})
+      .populate("spaceId")
+      .populate("userId")
+      .exec();
+    const filteredBookings = bookings.filter(
+      (booking) => booking.spaceId.userId.toString() === userId
+    );
+    if (filteredBookings.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No bookings found for this user in their spaces" });
+    }
+    res.json(filteredBookings);
+  } catch (error) {
+    next(error);
+  }
+});
+
+bookingRouter.put("/updatestatus/:id", async (req, res, next) => {
+  try {
+    const { ownerApprovalStatus, reasonOwnerRejected } = req.body;
+    // Validate the ownerApprovalStatus value
+    if (!["pending", "accepted", "declined"].includes(ownerApprovalStatus)) {
+      return res.status(400).json({ message: "Invalid owner approval status" });
+    }
+    // Prepare the update data
+    const updateData = {
+      ownerApprovalStatus,
+    };
+    // If the status is declined, add the cancelReason
+    if (ownerApprovalStatus === "declined") {
+      updateData.reasonOwnerRejected = reasonOwnerRejected;
+    }
+    const updatedBooking = await Bookings.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    )
+    .populate({path: "userId", select: "fullname avatar"})     
+    .populate("spaceId");
+    if (!updatedBooking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+    
+    let notificationMessage = "";
+    if (ownerApprovalStatus === "accepted") {
+      notificationMessage = "Lịch book của bạn đã được chấp nhận";
+    } else if (ownerApprovalStatus === "declined") {
+      notificationMessage = "Lịch book của bạn đã bị từ chối";
+    }
+
+    await notificationDao.saveAndSendNotification(
+      updatedBooking.userId._id.toString(),
+      notificationMessage,
+      updatedBooking.userId.avatar,
+      "/history"
+    );
+    res.json(updatedBooking);
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default bookingRouter  

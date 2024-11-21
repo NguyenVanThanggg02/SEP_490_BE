@@ -52,7 +52,7 @@ const bookingsSchema = new Schema(
       required: false,
     },
     cancelReason: {
-      type: String,
+      type: [String],
       required: false,
     },
     timeSlot: {
@@ -64,6 +64,27 @@ const bookingsSchema = new Schema(
       enum: ["pending", "accepted", "declined"],
       default: "pending",
     },
+    minusTransId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "transactions",
+    },
+    plusTransId: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "transactions",
+      default: []
+    }],
+    refundTransId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "transactions",
+    },
+    plusStatus: {
+      type: String,
+      enum: ["pending", "full_plus", "1_plus", "2_plus", "3_plus"],
+      default: "pending",
+    },
+    reasonOwnerRejected: {
+      type: String,
+    }
   },
   { timestamps: true }
 );

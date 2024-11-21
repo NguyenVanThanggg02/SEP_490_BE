@@ -8,6 +8,8 @@ import Rules from "../models/rules.js";
 import pkg from 'cloudinary'; // Nhập package cloudinary dưới dạng mặc định
 import Appliances from "../models/appliances.js";
 import Users from "../models/users.js";
+import Bookings from "../models/bookings.js";
+import UserNeeds from "../models/userNeeds.js";
 const getAllSpacesApply = async (req, res) => {
   try {
     const allSpaces = await spaceDao.fetchAllSpacesApply();
@@ -35,11 +37,68 @@ const getAllSpaceFavorites = async (req, res) => {
   }
 }
 
+
+// get proposed Spaces
+const getProposedSpaces = async (req, res) => {
+  const userId = req.params.userId;
+  if (!userId)
+    return res.status(404).json({
+      message: "UserId is required",
+    });
+  try {
+    const userNeed = await UserNeeds.findOne({ userId })
+      .populate("userId", "-password")
+      .lean();
+
+    if (!userNeed) {
+      return res.status(404).json({
+        message: "Not found user need",
+      });
+    }
+    console.log("userNeed", userNeed);
+    if (!userNeed.userId.firstLogin) {
+      return res.json({
+        message: "This is not first login",
+        data: [],
+      });
+    }
+    // user have choose some cate=> get spaces by cate
+    console.log(userNeed?.productPreferences);
+    let spaces = [];
+    if (userNeed.productPreferences?.length) {
+      spaces = await Spaces.find({
+        categoriesId: { $in: [userNeed.productPreferences] },
+      })
+        .populate("categoriesId")
+        .populate("reviews")
+        .lean();
+    } else {
+      // user not choose cate=> get spaces by 5 fist spaces
+      spaces = await Spaces.find({}, null, { skip: 5 })
+        .populate("categoriesId")
+        .populate("reviews")
+        .lean();
+    }
+
+    // update firstLogin
+    await Users.findByIdAndUpdate(userId, { firstLogin: false }).lean();
+
+    res.json({
+      message: "Get proposed spaced successfully",
+      data: spaces,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Get user needs failed",
+    });
+  }
+};
+
 const getSimilarSpaces = async (req, res) => {
   try {
     const similarSpaces = req.params.id
     const spaces = await spaceDao.fetchSimilarSpaces(similarSpaces)
-    if (spaces) {
+    if (spaces.length > 0) {
       res.status(200).json(spaces)
     } else {
       res.status(400).json({ message: 'not found' })
@@ -48,7 +107,6 @@ const getSimilarSpaces = async (req, res) => {
     res.status(500).json({ message: error.toString() })
   }
 }
-
 
 
 const createNewSpace = async (req, res) => {
@@ -62,7 +120,7 @@ const createNewSpace = async (req, res) => {
       userId,
       pricePerHour,
       pricePerDay,
-      pricePerWeek,
+      // pricePerWeek,
       pricePerMonth,
       images,
       censorship,
@@ -75,6 +133,14 @@ const createNewSpace = async (req, res) => {
       favorite,
       latLng,
     } = req.body;
+
+    // Kiểm tra các trường bắt buộc
+    if (!name  || !location || !area  || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields',
+      });
+    }
 
     let formattedImages = [];
     if (Array.isArray(images)) {
@@ -97,10 +163,6 @@ const createNewSpace = async (req, res) => {
     });
     await newCommunityStandards.save();
 
-
-
-
-
     const spaceData = {
       name,
       description,
@@ -110,7 +172,7 @@ const createNewSpace = async (req, res) => {
       userId,
       pricePerHour,
       pricePerDay,
-      pricePerWeek,
+      // pricePerWeek,
       pricePerMonth,
       images: formattedImages,
       censorship,
@@ -120,7 +182,7 @@ const createNewSpace = async (req, res) => {
       reportCount,
       isGoldenHour,
       goldenHourDetails,
-      communityStandardsId: communityStandardsId, // Gán ID đã tạo cho space
+      communityStandardsId: communityStandardsId, // Gán ID cho space
       favorite,
       latLng,
       locationPoint: {type: "Point", coordinates: latLng && latLng.length === 2 ? [latLng[1], latLng[0]] : null}
@@ -139,10 +201,11 @@ const createNewSpace = async (req, res) => {
     });
     return res.status(201).json({ success: true, space: newSpace });
   } catch (error) {
-    console.error("Error creating space:", error);
-    return res.status(500).json({ success: false, message: `Error creating space: ${error.message}` });
-  }
+    console.error('Error:', error);
+    res.status(500).json({ success: false, message: `Error creating space: ${error.message}` });
+  }  
 };
+
 
 const updateSpace = async (req, res) => {
   const { id } = req.params;
@@ -152,7 +215,7 @@ const updateSpace = async (req, res) => {
       rulesId,
       pricePerHour,
       pricePerDay,
-      pricePerWeek,
+      // pricePerWeek,
       pricePerMonth,
       images,
       location,
@@ -185,7 +248,7 @@ const updateSpace = async (req, res) => {
       name,
       pricePerHour,
       pricePerDay,
-      pricePerWeek,
+      // pricePerWeek,
       pricePerMonth,
       images: formattedImages,
       location,
@@ -251,28 +314,127 @@ const updateSpace = async (req, res) => {
   }
 };
 
+//get space based on filter
+const getFilteredSpaces = async (req, res, next) => {
+  try {
+    const {
+      name,
+      cateId,
+      applianceNames,
+      minArea,
+      maxArea,
+      typeOfPrice,
+      minPrice,
+      maxPrice,
+      district,
+    } = req.query;
+    // Khởi tạo đối tượng filter rỗng
+    let filter = {};
 
+    // Lọc theo tên
+    if (name) {
+      const trimmedVal = name.trim();
+      // Create a dynamic regular expression based on the input
+      const regex = new RegExp(`.*${trimmedVal}.*`, "i");
+      filter.name = { $regex: regex };
+    }
+
+    // Lọc theo danh mục
+    if (cateId) {
+      if (cateId !== "all") {
+        filter.categoriesId = cateId; // categoriesId để lọc theo ObjectId
+      }
+    }
+
+    // Convert minArea and maxArea to strings
+    const minAreaStr = minArea.toString();
+    const maxAreaStr = maxArea.toString();
+
+    // Lọc theo khu vực
+    if (minArea && maxArea) {
+      filter["$expr"] = {
+        $and: [
+          { $gte: [{ $toDouble: "$area" }, parseFloat(minAreaStr)] },
+          { $lte: [{ $toDouble: "$area" }, parseFloat(maxAreaStr)] },
+        ],
+      };
+    } else if (minArea) {
+      filter["$expr"] = {
+        $and: [{ $gte: [{ $toDouble: "$area" }, parseFloat(minAreaStr)] }],
+      };
+    } else if (maxArea) {
+      filter["$expr"] = {
+        $and: [{ $lte: [{ $toDouble: "$area" }, parseFloat(maxAreaStr)] }],
+      };
+    }
+
+    // Lọc theo gias
+    if (typeOfPrice && minPrice && maxPrice) {
+      filter["$expr"] = {
+        $and: [
+          { $gte: [{ $toDouble: `$${typeOfPrice}` }, parseFloat(minPrice)] },
+          { $lte: [{ $toDouble: `$${typeOfPrice}` }, parseFloat(maxPrice)] },
+        ],
+      };
+    } else if (minPrice) {
+      filter["$expr"] = {
+        $gte: [{ $toDouble: `$${typeOfPrice}` }, parseFloat(minPrice)],
+      };
+    } else if (maxPrice) {
+      filter["$expr"] = {
+        $lte: [{ $toDouble: `$${typeOfPrice}` }, parseFloat(maxPrice)],
+      };
+    }
+
+    console.log("filter", filter);
+
+    // Lọc theo tên thiết bị, applianceNames can be array or string
+    if (applianceNames?.length || applianceNames) {
+      // Step 1: Find appliance documents that match the given appliance names
+      const appliances = await Appliances.find({
+        "appliances.name": {
+          $in: applianceNames?.length ? applianceNames : [applianceNames],
+        },
+      }).lean();
+
+      const applianceIds = appliances.map((appliance) => appliance._id);
+      filter["appliancesId"] = { $in: applianceIds };
+    }
+
+    const filteredSpaces = await Spaces.find(filter)
+      .lean()
+      .populate("categoriesId")
+      .populate("rulesId")
+      .populate("reviews")
+      .populate("userId")
+      .populate("appliancesId"); // Populate appliancesId nếu không có applianceNames
+
+    res.status(200).json({
+      message: "Get the filtered space successfully",
+      data: filteredSpaces,
+    });
+  } catch (error) {
+    next(error); // Gọi next với lỗi để xử lý lỗi
+  }
+};
 
 const changeFavoriteStatus = async (req, res) => {
   try {
     const spaceId = req.params.id;
 
-    // Tìm không gian theo ID
-    const space = await Spaces.findById(spaceId);
+    // Tìm không gian qua DAO
+    const space = await spaceDao.getSpaceById(spaceId);
 
     if (!space) {
       return res.status(404).json({ message: "Không gian không tồn tại" });
     }
 
-    // Đảo ngược trạng thái của favorite
-    space.favorite = !space.favorite;
-
-    // Lưu lại thay đổi
-    await space.save();
+    // Đảo ngược trạng thái yêu thích qua DAO
+    const updatedSpace = await spaceDao.updateFavoriteStatus(space);
 
     return res.status(200).json({
       message: "Đã thay đổi trạng thái yêu thích thành công",
-      favorite: space.favorite,
+      favorite: updatedSpace.favorite,
     });
   } catch (error) {
     return res.status(500).json({
@@ -281,6 +443,8 @@ const changeFavoriteStatus = async (req, res) => {
     });
   }
 };
+
+
 
 const removeImages = async (req, res) => {
   try {
@@ -321,13 +485,18 @@ const uploadImages = async (req, res) => {
 
 const deleteSpace = async (req, res) => {
   try {
-    const deleteSpace = await spaceDao.deleteSpace(req.params.id);
-    res.status(200).json(deleteSpace);
+    const deletedSpace = await spaceDao.deleteSpace(req.params.id);
+
+    if (!deletedSpace) {
+      return res.status(404).json({ message: 'Space not found' });
+    }
+
+    res.status(200).json(deletedSpace);
   } catch (error) {
-    res.status(500).json({ error: error.toString() });
-    console.log('Failed to delete product');
+    return res.status(500).json({ error: error.message });
   }
 };
+
 
 
 const updateSpaceCensorshipAndCommunityStandards = async (req, res) => {
@@ -367,7 +536,111 @@ const updateSpaceCensorshipAndCommunityStandards = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Error updating space and community standards' });
   }
 };
+const getBookingDetailsSpaces = async (req, res) => {
+  const userId = req.params.userId;
 
+  if (!userId)
+    return res.status(404).json({
+      message: "All field is required",
+    });
+  try {
+    const spaces = await Spaces.find({ userId }, "name").lean();
+    const spacesWithBook = await Promise.all(
+      spaces.map(async (space, i) => {
+        const bookings = await Bookings.find(
+          { spaceId: space._id.toString(), status: "completed" },
+          "createdAt plusTransId"
+        )
+          .lean()
+          .populate("plusTransId");
+
+        return {
+          ...space,
+          bookings,
+        };
+      })
+    );
+
+    res.json({
+      message: "Get space with booking info successfully",
+      data: spacesWithBook,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Get space with booking info failed",
+    });
+  }
+};
+
+// const getBookingDetailsSpaces = async (req, res) => {
+//   const userId = req.params.userId;
+//   const { month, year } = req.query;
+
+//   if (!userId || !month || !year)
+//     return res.status(404).json({
+//       message: "All field is required",
+//     });
+//   try {
+//     let filter = {
+//       status: "completed",
+//     };
+//     if (month !== "all") {
+//       // Create the start and end dates for the query
+//       const startDate = new Date(year, month - 1, 1); // month is 0-indexed in JavaScript Date
+//       const endDate = new Date(year, month, 0); // last day of the month
+//       filter.createdAt = {
+//         $gte: startDate,
+//         $lt: endDate,
+//       };
+//     } else {
+//       // First date and time of the year
+//       const startDate = new Date(year, 0, 1, 0, 0, 0, 0);
+//       // Last date and time of the year
+//       const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
+//       filter.createdAt = {
+//         $gte: startDate,
+//         $lt: endDate,
+//       };
+//     }
+//     const spaces = await Spaces.find({ userId }, "name").lean();
+//     const spacesWithBook = await Promise.all(
+//       spaces.map(async (space, i) => {
+//         const bookings = await Bookings.find(
+//           { spaceId: space._id.toString(), status: "completed", ...filter },
+//           "createdAt plusTransId"
+//         )
+//           .lean()
+//           .populate("plusTransId");
+
+//         const getTotalPlusTrans = (plusTransId) => {
+//           return plusTransId.reduce((acc, currVal) => {
+//             return acc + Number(currVal.amount);
+//           }, 0);
+//         };
+
+//         const flatPlusTransId = bookings.flatMap((booking) => {
+//           return booking.plusTransId;
+//         });
+//         return {
+//           ...space,
+//           numOfBooking: bookings.length,
+//           totalAvenue: flatPlusTransId.length
+//             ? getTotalPlusTrans(flatPlusTransId)
+//             : 0,
+//         };
+//       })
+//     );
+
+//     res.json({
+//       message: "Get space with booking info successfully",
+//       data: spacesWithBook,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Get space with booking info failed",
+//     });
+//   }
+// };
 
 export default {
   getAllSpaces,
@@ -380,5 +653,8 @@ export default {
   getAllSpacesApply,
   deleteSpace,
   updateSpaceCensorshipAndCommunityStandards,
-  updateSpace
+  updateSpace,
+  getProposedSpaces,
+  getBookingDetailsSpaces,
+  getFilteredSpaces
 }

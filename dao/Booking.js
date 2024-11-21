@@ -20,11 +20,28 @@ class BookingDAO {
         let dayBookings;
 
         // Phân biệt logic dựa trên rentalType
-        if (rentalType === 'hour' || rentalType === 'day') {
+        if (rentalType === 'hour') {
           // Với loại thuê theo giờ hoặc ngày, kiểm tra từng slot cụ thể trong ngày
           dayBookings = await Booking.find({
             spaceId,
-            'selectedSlots.date': { $gte: startOfDay, $lte: endOfDay }
+            selectedDates: { 
+              $elemMatch: { 
+                $gte: startOfDay, 
+                $lte: endOfDay
+              }
+            },
+            rentalType: { $ne: 'hour' }
+          });
+        } else if (rentalType === 'day') {
+          // Với loại thuê theo giờ hoặc ngày, kiểm tra từng slot cụ thể trong ngày
+          dayBookings = await Booking.find({
+            spaceId,
+            selectedDates: { 
+              $elemMatch: { 
+                $gte: startOfDay, 
+                $lte: endOfDay
+              }
+            }
           });
         } else if (rentalType === 'week' || rentalType === 'month') {
           // Với loại thuê theo tuần hoặc tháng, kiểm tra khoảng thời gian từ startDate đến endDate

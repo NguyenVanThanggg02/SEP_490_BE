@@ -6,6 +6,7 @@ const fetchAllSpacesApply = async () => {
     .populate("communityStandardsId")
     .populate("appliancesId")
     .populate("userId")
+    .populate("reviews")
     .exec()
   } catch (error) {
     throw new Error(error.toString());
@@ -13,7 +14,7 @@ const fetchAllSpacesApply = async () => {
 }
 const fetchAllSpaces = async () => {
   try {
-    return await Spaces.find({}).populate("appliancesId").populate("userId").exec()
+    return await Spaces.find({}).populate("reviews").populate("userId").populate("appliancesId").exec()
   } catch (error) {
     throw new Error(error.toString());
   }
@@ -21,7 +22,7 @@ const fetchAllSpaces = async () => {
 
 const fetchAllSpaceFavorite = async () => {
   try {
-    return await Spaces.find({ favorite: true }).populate("appliancesId").exec()
+    return await Spaces.find({ favorite: true }).populate("appliancesId").populate("reviews").exec()
   } catch (error) {
     throw new Error(error.toString());
   }
@@ -37,13 +38,20 @@ const fetchSimilarSpaces = async (id) => {
     throw new Error(error.toString());
   }
 }
+const createCommunityStandards = async (communityStandardsData) => {
+  const newCommunityStandards = new CommunityStandards(communityStandardsData);
+  return await newCommunityStandards.save();
+};
+
 
 
 export const createSpace = async (spaceData) => {
   try {
-    console.log(spaceData)
-    console.log({...spaceData, locationPoint: {type: "Point", coordinates: spaceData.latLng ? [spaceData.latLng[1], spaceData.latLng[0]] : null}})
-    const newSpace = new Spaces({...spaceData, locationPoint: {type: "Point", coordinates: spaceData.latLng ? [spaceData.latLng[1], spaceData.latLng[0]] : null}});
+    const newSpace = new Spaces({
+      ...spaceData,
+       locationPoint: {type: "Point", coordinates: spaceData.latLng 
+        ? [spaceData.latLng[1], spaceData.latLng[0]] 
+        : null}});
     await newSpace.save();
     return newSpace;
   } catch (error) {
@@ -66,10 +74,20 @@ export const updateSpace = async (id, spaceData) => {
 const deleteSpace = async (id) => {
   try {
     const deleteProduct = await Spaces.findByIdAndDelete(id).exec();
+    if (!deleteProduct) throw new Error('Server error');
     return deleteProduct;
   } catch (error) {
     throw new Error(error.toString());
   }
 };
 
-export default { fetchAllSpaces, fetchSimilarSpaces, createSpace, fetchAllSpaceFavorite, fetchAllSpacesApply, deleteSpace, updateSpace }
+const getSpaceById = async (spaceId) => {
+  return await Spaces.findById(spaceId);
+};
+
+const updateFavoriteStatus = async (space) => {
+  space.favorite = !space.favorite;
+  return await space.save();
+};
+
+export default { fetchAllSpaces, fetchSimilarSpaces, createSpace, fetchAllSpaceFavorite, fetchAllSpacesApply, deleteSpace, updateSpace,getSpaceById,updateFavoriteStatus,createCommunityStandards }
