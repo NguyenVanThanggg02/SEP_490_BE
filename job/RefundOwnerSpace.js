@@ -8,35 +8,36 @@ async function plusHour() {
     const currentTime = new Date();
     const currentTimeStr = currentTime.toISOString().slice(11, 16);
     const bookingProcessList = await Bookings.find({
-      ownerApprovalStatus: "accepted",
+      // ownerApprovalStatus: "accepted",
+      status: "completed",
       rentalType: "hour",
       plusStatus: { $ne: "full_plus" },
-      $expr: {
-        $and: [
-          { $lt: ["$endDate", currentTime] }, 
-          {
-            $lt: [
-              {
-                $let: {
-                  vars: {
-                    latestEndTime: {
-                      $max: {
-                        $map: {
-                          input: "$selectedSlot",
-                          as: "slot",
-                          in: "$$slot.endTime",
-                        },
-                      },
-                    },
-                  },
-                  in: "$$latestEndTime",
-                },
-              },
-              currentTimeStr,
-            ],
-          },
-        ],
-      },
+      // $expr: {
+      //   $and: [
+      //     { $lt: ["$endDate", currentTime] }, 
+      //     {
+      //       $lt: [
+      //         {
+      //           $let: {
+      //             vars: {
+      //               latestEndTime: {
+      //                 $max: {
+      //                   $map: {
+      //                     input: "$selectedSlot",
+      //                     as: "slot",
+      //                     in: "$$slot.endTime",
+      //                   },
+      //                 },
+      //               },
+      //             },
+      //             in: "$$latestEndTime",
+      //           },
+      //         },
+      //         currentTimeStr,
+      //       ],
+      //     },
+      //   ],
+      // },
     })
       .populate("spaceId")
       .populate("refundTransId");
@@ -80,7 +81,8 @@ async function plusHour() {
 async function plusDay() {
   try {
     const bookingProcessList = await Bookings.find({
-      ownerApprovalStatus: "accepted",
+      // ownerApprovalStatus: "accepted",
+      status: "completed",
       // endDate: { $lt: new Date() },
       rentalType: "day",
       plusStatus: { $ne: "full_plus" },
@@ -126,7 +128,8 @@ async function plusDay() {
 async function plusWeek() {
   try {
     const bookingProcessList = await Bookings.find({
-      ownerApprovalStatus: "accepted",
+      // ownerApprovalStatus: "accepted",
+      status: "completed",
       endDate: { $lt: new Date() },
       rentalType: "week",
       plusStatus: { $ne: "full_plus" }
@@ -169,7 +172,8 @@ async function plusMonth() {
   const now = new Date();
   try {
     const bookingProcessList = await Bookings.find({
-      ownerApprovalStatus: "accepted",
+      // ownerApprovalStatus: "accepted",
+      status: "completed",
       startDate: { $lt: new Date() },
       rentalType: "month",
       plusStatus: { $ne: "full_plus" }

@@ -254,22 +254,22 @@ bookingRouter.put("/:id/cancel", async (req, res) => {
         return res.status(400).json({ message: "Không thể hủy khi còn dưới 24 giờ" });
       }
     }  
-    else if (booking.rentalType === "week") {
-      const currentDate = new Date();
-      const startDate = new Date(booking.startDate);
-      const timeDifference = startDate - currentDate; // Tính sự chênh lệch thời gian
+    // else if (booking.rentalType === "week") {
+    //   const currentDate = new Date();
+    //   const startDate = new Date(booking.startDate);
+    //   const timeDifference = startDate - currentDate; // Tính sự chênh lệch thời gian
     
-      // Kiểm tra nếu chưa sử dụng ngày nào (chưa đến ngày bắt đầu)
-      if (timeDifference > 0) {
-        // Chưa đến ngày bắt đầu, có thể hủy booking
-        return res.json({ message: "Booking có thể hủy" });
-      }
+    //   // Kiểm tra nếu chưa sử dụng ngày nào (chưa đến ngày bắt đầu)
+    //   if (timeDifference > 0) {
+    //     // Chưa đến ngày bắt đầu, có thể hủy booking
+    //     return res.json({ message: "Booking có thể hủy" });
+    //   }
     
-      // Kiểm tra nếu đã sử dụng hơn 3 ngày
-      if (Math.abs(timeDifference) > 3 * 24 * 60 * 60 * 1000) { // Đã sử dụng hơn 3 ngày
-        return res.status(400).json({ message: "Không thể hủy booking khi đã sử dụng hơn 3 ngày" });
-      }
-    }
+    //   // Kiểm tra nếu đã sử dụng hơn 3 ngày
+    //   if (Math.abs(timeDifference) > 3 * 24 * 60 * 60 * 1000) { // Đã sử dụng hơn 3 ngày
+    //     return res.status(400).json({ message: "Không thể hủy booking khi đã sử dụng hơn 3 ngày" });
+    //   }
+    // }
     
     
     else if (booking.rentalType === "month") {

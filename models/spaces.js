@@ -55,10 +55,10 @@ const spacesSchema = new Schema(
       type: Number,
       // required: true,
     },
-    pricePerWeek: {
-      type: Number,
-      // required: true,
-    },
+    // pricePerWeek: {
+    //   type: Number,
+    //   // required: true,
+    // },
     pricePerMonth: {
       type: Number,
       // required: true,

@@ -59,11 +59,11 @@ const bookingsSchema = new Schema(
       startTime: { type: String, required: false },
       endTime: { type: String, required: false },
     },
-    ownerApprovalStatus: {
-      type: String,
-      enum: ["pending", "accepted", "declined"],
-      default: "pending",
-    },
+    // ownerApprovalStatus: {
+    //   type: String,
+    //   enum: ["pending", "accepted", "declined"],
+    //   default: "pending",
+    // },
     minusTransId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "transactions",
@@ -82,9 +82,9 @@ const bookingsSchema = new Schema(
       enum: ["pending", "full_plus", "1_plus", "2_plus", "3_plus"],
       default: "pending",
     },
-    reasonOwnerRejected: {
-      type: String,
-    }
+    // reasonOwnerRejected: {
+    //   type: String,
+    // }
   },
   { timestamps: true }
 );
