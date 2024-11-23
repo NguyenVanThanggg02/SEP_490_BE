@@ -43,7 +43,7 @@ class BookingDAO {
               }
             }
           });
-        } else if (/*rentalType === 'week' || */ rentalType === 'month') {
+        } else if (rentalType === 'week' || rentalType === 'month') {
           // Với loại thuê theo tuần hoặc tháng, kiểm tra khoảng thời gian từ startDate đến endDate
           dayBookings = await Booking.find({
             spaceId,

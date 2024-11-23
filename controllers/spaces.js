@@ -571,7 +571,33 @@ const getBookingDetailsSpaces = async (req, res) => {
     });
   }
 };
+const getBookingDetailsSpace = async (req, res) => {
+  const spaceId = req.params.spaceId;
 
+  if (!spaceId)
+    return res.status(404).json({
+      message: "All field is required",
+    });
+  try {
+    const space = await Spaces.findById(spaceId).lean();
+    const currentDate = new Date();
+    const datePart = currentDate.toISOString().split("T")[0];
+    const currentDateSetTo0h = new Date(`${datePart}T00:00:00.000Z`);
+    const bookings = await Bookings.find(
+      // booking not checkout yet
+      { spaceId, endDate: { $gte: currentDateSetTo0h } }
+    ).lean();
+
+    res.json({
+      message: "Get space with booking info successfully",
+      data: { ...space, bookings },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Get space with booking info failed",
+    });
+  }
+};
 // const getBookingDetailsSpaces = async (req, res) => {
 //   const userId = req.params.userId;
 //   const { month, year } = req.query;
@@ -656,5 +682,6 @@ export default {
   updateSpace,
   getProposedSpaces,
   getBookingDetailsSpaces,
+  getBookingDetailsSpace,
   getFilteredSpaces
 }

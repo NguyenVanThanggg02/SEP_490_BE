@@ -12,25 +12,29 @@ const bookingsSchema = new Schema(
       ref: "spaces",
       required: true,
     },
-    startDate: { // Trước là checkIn
+    startDate: {
+      // Trước là checkIn
       type: Date,
       required: true,
     },
-    endDate: { // Trước là checkOut
+    endDate: {
+      // Trước là checkOut
       type: Date,
       required: true,
     },
-    rentalType: { // Thêm trường mới để xác định loại hình thuê
+    rentalType: {
+      // Thêm trường mới để xác định loại hình thuê
       type: String,
       enum: ["hour", "day", "week", "month"],
       required: true,
     },
-    selectedSlots: [ // Để lưu trữ các khung giờ khi thuê theo giờ
+    selectedSlots: [
+      // Để lưu trữ các khung giờ khi thuê theo giờ
       {
         date: { type: Date },
         startTime: { type: String },
-        endTime: { type: String }
-      }
+        endTime: { type: String },
+      },
     ],
     selectedDates: [Date],
     status: {
@@ -44,8 +48,8 @@ const bookingsSchema = new Schema(
         ref: "bookingDetails",
       },
     ],
-    totalAmount:{
-      type: String
+    totalAmount: {
+      type: String,
     },
     notes: {
       type: String,
@@ -62,17 +66,19 @@ const bookingsSchema = new Schema(
     // ownerApprovalStatus: {
     //   type: String,
     //   enum: ["pending", "accepted", "declined"],
-    //   default: "pending",
+    //   default: "accepted",
     // },
     minusTransId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "transactions",
     },
-    plusTransId: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "transactions",
-      default: []
-    }],
+    plusTransId: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "transactions",
+        default: [],
+      },
+    ],
     refundTransId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "transactions",
@@ -82,9 +88,6 @@ const bookingsSchema = new Schema(
       enum: ["pending", "full_plus", "1_plus", "2_plus", "3_plus"],
       default: "pending",
     },
-    // reasonOwnerRejected: {
-    //   type: String,
-    // }
   },
   { timestamps: true }
 );
