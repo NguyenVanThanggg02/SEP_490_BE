@@ -296,13 +296,35 @@ const getListBookingOfUser = async (req, res) => {
     res.status(500).json({ message: error.toString() });
   }
 };
+const cancelBooking = async (req, res) => {
+  try {
+    const { userId, bookingId, cancelReason } = req.body;   
+    await BookingDAO.cancelBooking(userId, bookingId,cancelReason);
+    res.status(200).json({ message: "Hủy đặt space thành công" });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+    return;
+  }
+};
 
+const cancelBookingPrecheck = async (req, res) => {
+  try {
+    const {userId, bookingId} = req.body    
+    const data = await BookingDAO.cancelBookingPrecheck(userId, bookingId);
+    res.status(200).json({ ...data });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+    return;
+  }
+};
 const BookingController = {
   sendEmailBookingCompleted,
   createBooking,
   checkHourAvailability,
   checkDayAvailability,
-  getListBookingOfUser
+  getListBookingOfUser,
+  cancelBooking,
+  cancelBookingPrecheck
 }
 
 export default BookingController

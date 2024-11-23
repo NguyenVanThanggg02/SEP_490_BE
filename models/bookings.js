@@ -56,7 +56,7 @@ const bookingsSchema = new Schema(
       required: false,
     },
     cancelReason: {
-      type: [String],
+      type: String,
       required: false,
     },
     timeSlot: {
