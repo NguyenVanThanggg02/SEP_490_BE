@@ -39,60 +39,114 @@ const getAllSpaceFavorites = async (req, res) => {
 
 
 // get proposed Spaces
+// const getProposedSpaces = async (req, res) => {
+//   const userId = req.params.userId;
+//   console.log("userId:", userId); // Debug userId
+
+//   if (!userId)
+//     return res.status(404).json({
+//       message: "UserId is required",
+//     });
+//   try {
+//     const userNeed = await UserNeeds.findOne({ userId }).populate("userId", "-password");
+//       console.log("userNeed:", userNeed); // Debug userNeed
+
+//     if (!userNeed) {
+//       return res.status(404).json({
+//         message: "Not found user need",
+//       });
+//     }
+//     // console.log("userNeed", userNeed);
+//     if (!userNeed.userId.firstLogin) {
+//       return res.json({
+//         message: "This is not first login",
+//         data: [],
+//       });
+//     }
+//     // user have choose some cate=> get spaces by cate
+//     // console.log(userNeed?.productPreferences);
+//     let spaces = [];
+//     if (userNeed.productPreferences?.length) {
+//       spaces = await Spaces.find({
+//         categoriesId: { $in: [userNeed.productPreferences] },
+//       })
+//         .populate("categoriesId")
+//         .populate("reviews")
+//         .lean();
+//     } else {
+//       // user not choose cate=> get spaces by 5 fist spaces
+//       spaces = await Spaces.find({}, null, { skip: 5 })
+//         .populate("categoriesId")
+//         .populate("reviews")
+//         .lean();
+//     }
+
+//     // update firstLogin
+//     await Users.findByIdAndUpdate(userId, { firstLogin: false }).lean();
+
+//     res.json({
+//       message: "Get proposed spaced successfully",
+//       data: spaces,
+//     });
+//   } catch (error) {
+//     console.error("Error:", error); // Debug lỗi
+
+//     res.status(500).json({
+//       message: "Get user needs failed",
+//     });
+//   }
+// };
+
 const getProposedSpaces = async (req, res) => {
   const userId = req.params.userId;
+
   if (!userId)
     return res.status(404).json({
       message: "UserId is required",
     });
+
   try {
-    const userNeed = await UserNeeds.findOne({ userId })
-      .populate("userId", "-password")
-      .lean();
+    // Lấy userNeed từ DAO
+    const userNeed = await spaceDao.getUserNeedByUserId(userId);
+    // console.log("userNeed:", userNeed); 
 
     if (!userNeed) {
       return res.status(404).json({
         message: "Not found user need",
       });
     }
-    console.log("userNeed", userNeed);
+
     if (!userNeed.userId.firstLogin) {
       return res.json({
         message: "This is not first login",
         data: [],
       });
     }
-    // user have choose some cate=> get spaces by cate
-    console.log(userNeed?.productPreferences);
+
     let spaces = [];
     if (userNeed.productPreferences?.length) {
-      spaces = await Spaces.find({
-        categoriesId: { $in: [userNeed.productPreferences] },
-      })
-        .populate("categoriesId")
-        .populate("reviews")
-        .lean();
+      // Lấy không gian theo sở thích của người dùng từ DAO
+      spaces = await spaceDao.getSpacesByPreferences(userNeed.productPreferences);
     } else {
-      // user not choose cate=> get spaces by 5 fist spaces
-      spaces = await Spaces.find({}, null, { skip: 5 })
-        .populate("categoriesId")
-        .populate("reviews")
-        .lean();
+      // Nếu người dùng không chọn sở thích, lấy 5 không gian đầu tiên
+      spaces = await spaceDao.getFirst5Spaces();
     }
 
-    // update firstLogin
-    await Users.findByIdAndUpdate(userId, { firstLogin: false }).lean();
+    // Cập nhật trạng thái firstLogin của người dùng
+    await spaceDao.updateFirstLoginStatus(userId);
 
     res.json({
-      message: "Get proposed spaced successfully",
+      message: "Get proposed spaces successfully",
       data: spaces,
     });
   } catch (error) {
+
     res.status(500).json({
       message: "Get user needs failed",
     });
   }
 };
+
 
 const getSimilarSpaces = async (req, res) => {
   try {
@@ -535,97 +589,27 @@ const updateSpaceCensorshipAndCommunityStandards = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Error updating space and community standards' });
   }
 };
-const getBookingDetailsSpaces = async (req, res) => {
-  const userId = req.params.userId;
-
-  if (!userId)
-    return res.status(404).json({
-      message: "All field is required",
-    });
-  try {
-    const spaces = await Spaces.find({ userId }, "name").lean();
-    const spacesWithBook = await Promise.all(
-      spaces.map(async (space, i) => {
-        const bookings = await Bookings.find(
-          { spaceId: space._id.toString(), status: "completed" },
-          "createdAt plusTransId"
-        )
-          .lean()
-          .populate("plusTransId");
-
-        return {
-          ...space,
-          bookings,
-        };
-      })
-    );
-
-    res.json({
-      message: "Get space with booking info successfully",
-      data: spacesWithBook,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "Get space with booking info failed",
-    });
-  }
-};
-
 // const getBookingDetailsSpaces = async (req, res) => {
 //   const userId = req.params.userId;
-//   const { month, year } = req.query;
 
-//   if (!userId || !month || !year)
+//   if (!userId)
 //     return res.status(404).json({
 //       message: "All field is required",
 //     });
 //   try {
-//     let filter = {
-//       status: "completed",
-//     };
-//     if (month !== "all") {
-//       // Create the start and end dates for the query
-//       const startDate = new Date(year, month - 1, 1); // month is 0-indexed in JavaScript Date
-//       const endDate = new Date(year, month, 0); // last day of the month
-//       filter.createdAt = {
-//         $gte: startDate,
-//         $lt: endDate,
-//       };
-//     } else {
-//       // First date and time of the year
-//       const startDate = new Date(year, 0, 1, 0, 0, 0, 0);
-//       // Last date and time of the year
-//       const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
-//       filter.createdAt = {
-//         $gte: startDate,
-//         $lt: endDate,
-//       };
-//     }
 //     const spaces = await Spaces.find({ userId }, "name").lean();
 //     const spacesWithBook = await Promise.all(
 //       spaces.map(async (space, i) => {
 //         const bookings = await Bookings.find(
-//           { spaceId: space._id.toString(), status: "completed", ...filter },
+//           { spaceId: space._id.toString(), status: "completed" },
 //           "createdAt plusTransId"
 //         )
 //           .lean()
 //           .populate("plusTransId");
 
-//         const getTotalPlusTrans = (plusTransId) => {
-//           return plusTransId.reduce((acc, currVal) => {
-//             return acc + Number(currVal.amount);
-//           }, 0);
-//         };
-
-//         const flatPlusTransId = bookings.flatMap((booking) => {
-//           return booking.plusTransId;
-//         });
 //         return {
 //           ...space,
-//           numOfBooking: bookings.length,
-//           totalAvenue: flatPlusTransId.length
-//             ? getTotalPlusTrans(flatPlusTransId)
-//             : 0,
+//           bookings,
 //         };
 //       })
 //     );
@@ -640,6 +624,42 @@ const getBookingDetailsSpaces = async (req, res) => {
 //     });
 //   }
 // };
+
+const getBookingDetailsSpaces = async (req, res) => {
+  const userId = req.params.userId;
+
+  if (!userId)
+    return res.status(404).json({
+      message: "All field is required",
+    });
+
+  try {
+    // Lấy danh sách các không gian theo userId
+    const spaces = await spaceDao.getSpacesByUserId(userId);
+
+    // Lấy thông tin đặt phòng của từng không gian
+    const spacesWithBook = await Promise.all(
+      spaces.map(async (space) => {
+        const bookings = await spaceDao.getBookingsBySpaceId(space._id);
+        return {
+          ...space,
+          bookings,
+        };
+      })
+    );
+
+    res.status(200).json({
+      message: "Get space with booking info successfully",
+      data: spacesWithBook,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Get space with booking info failed",
+    });
+  }
+};
+
+
 
 export default {
   getAllSpaces,

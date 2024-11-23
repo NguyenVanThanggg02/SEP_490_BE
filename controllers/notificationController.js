@@ -31,4 +31,4 @@ const markAllNotificationsAsRead = async (req, res) => {
   }
 };
 
-export  { getAllNotifications, markAllNotificationsAsRead };
+export default  { getAllNotifications, markAllNotificationsAsRead };

@@ -1,13 +1,16 @@
+import Bookings from "../models/bookings.js";
 import Spaces from "../models/spaces.js";
+import UserNeeds from "../models/userNeeds.js";
+import Users from "../models/users.js";
 
 const fetchAllSpacesApply = async () => {
   try {
     return await Spaces.find({ censorship: "Chấp nhận" })
-    .populate("communityStandardsId")
-    .populate("appliancesId")
-    .populate("userId")
-    .populate("reviews")
-    .exec()
+      .populate("communityStandardsId")
+      .populate("appliancesId")
+      .populate("userId")
+      .populate("reviews")
+      .exec()
   } catch (error) {
     throw new Error(error.toString());
   }
@@ -49,9 +52,12 @@ export const createSpace = async (spaceData) => {
   try {
     const newSpace = new Spaces({
       ...spaceData,
-       locationPoint: {type: "Point", coordinates: spaceData.latLng 
-        ? [spaceData.latLng[1], spaceData.latLng[0]] 
-        : null}});
+      locationPoint: {
+        type: "Point", coordinates: spaceData.latLng
+          ? [spaceData.latLng[1], spaceData.latLng[0]]
+          : null
+      }
+    });
     await newSpace.save();
     return newSpace;
   } catch (error) {
@@ -90,4 +96,82 @@ const updateFavoriteStatus = async (space) => {
   return await space.save();
 };
 
-export default { fetchAllSpaces, fetchSimilarSpaces, createSpace, fetchAllSpaceFavorite, fetchAllSpacesApply, deleteSpace, updateSpace,getSpaceById,updateFavoriteStatus,createCommunityStandards }
+const getUserNeedByUserId = async (userId) => {
+  try {
+    return await UserNeeds.findOne({ userId }).populate("userId", "-password").lean();
+  } catch (error) {
+    throw new Error("Error retrieving user need");
+  }
+};
+
+const getSpacesByPreferences = async (preferences) => {
+  try {
+    return await Spaces.find({ categoriesId: { $in: [preferences] } })
+      .populate("categoriesId")
+      .populate("reviews")
+      .lean();
+  } catch (error) {
+    throw new Error("Error retrieving spaces by preferences");
+  }
+};
+
+const getFirst5Spaces = async () => {
+  try {
+    return await Spaces.find({}, null, { skip: 5 })
+      .populate("categoriesId")
+      .populate("reviews")
+      .lean();
+  } catch (error) {
+    throw new Error("Error retrieving first 5 spaces");
+  }
+};
+
+const updateFirstLoginStatus = async (userId) => {
+  try {
+    return await Users.findByIdAndUpdate(userId, { firstLogin: false }).lean();
+  } catch (error) {
+    throw new Error("Error updating first login status");
+  }
+};
+
+const getSpacesByUserId = async (userId) => {
+  try {
+    return await Spaces.find({ userId }, "name").lean();
+  } catch (error) {
+    throw new Error("Error retrieving spaces by user ID");
+  }
+};
+
+const getBookingsBySpaceId = async (spaceId) => {
+  try {
+    return await Bookings.find(
+      { spaceId: spaceId.toString(), status: "completed" },
+      "createdAt plusTransId"
+    )
+      .lean()
+      .populate("plusTransId");
+  } catch (error) {
+    throw new Error("Error retrieving bookings by space ID");
+  }
+};
+
+
+export default
+  {
+    fetchAllSpaces,
+    fetchSimilarSpaces,
+    createSpace,
+    fetchAllSpaceFavorite,
+    fetchAllSpacesApply,
+    deleteSpace,
+    updateSpace,
+    getSpaceById,
+    updateFavoriteStatus,
+    createCommunityStandards,
+    getUserNeedByUserId,
+    getSpacesByPreferences,
+    getFirst5Spaces,
+    updateFirstLoginStatus,
+    getSpacesByUserId,
+    getBookingsBySpaceId
+  }
