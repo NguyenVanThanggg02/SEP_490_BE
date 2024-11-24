@@ -10,6 +10,7 @@ import sendEmailBookingCompleted from "./bookings.js";
 import messageController from "./message.js";
 import communityStandardsController from "./communityStandards.js";
 import notificationController from "./notificationController.js";
+import MessageController from "./MessageController.js";
 export {
   userController,
   reviewController,
@@ -22,5 +23,6 @@ export {
   sendEmailBookingCompleted,
   messageController,
   communityStandardsController,
-  notificationController
+  notificationController,
+  MessageController
 };

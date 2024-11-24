@@ -55,7 +55,7 @@ const getMessagesBetweenUsers = async (req, res) => {
 
     res.status(200).json({ data: messages });
   } catch (error) {
-    res.status(500).json({ message: error.toString() });
+    res.status(500).json({ message: error.message });
   }
 };
 
