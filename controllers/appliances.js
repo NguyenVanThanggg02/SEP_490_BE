@@ -5,6 +5,9 @@ import { appliancesDao } from "../dao/index.js";
 export const getAllAppliances = async (req, res) => {
   try {
     const appliances = await appliancesDao.fetchAllAppliances();
+    if (!appliances) {
+      return res.status(500).json({ error: "Error: Cannot retrieve appliances" });
+    }
     return res.status(200).json(appliances);
   } catch (error) {
     res.status(500).json({ error: `Error: ${error.message}` });

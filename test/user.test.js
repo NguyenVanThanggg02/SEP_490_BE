@@ -8,13 +8,7 @@ import Users from "../models/users.js";
 
 
 describe("User Controller Tests", () => {
-/* 
-req: request object
-res: respone object
-sandbox: công cụ của sinon.js để tạo và quản lý các spy, stub, mock trong test 
-nôn na giả lậo giữ liệu đầu ra cho các service để test xem 
-khi service trả về giữ liệu như vậy api chạy có đúng yêu cầu không!
-*/
+
   let req, res, sandbox;
 
   beforeEach(() => {
@@ -28,56 +22,33 @@ khi service trả về giữ liệu như vậy api chạy có đúng yêu cầu 
       json: sinon.stub(),
       send: sinon.stub(),
     };
-    // Quản lý các spy, stub, và mock trong từng test case. Sandbox đảm bảo rằng mọi thay đổi sẽ bị khôi phục sau mỗi test case, tránh tình trạng "rò rỉ" giữa các test.
     sandbox = sinon.createSandbox();
   });
 
   afterEach(() => {
-    // Khôi phục tất cả các phương thức gốc (original methods) mà các stub đã ghi đè.
-    //Đảm bảo rằng test tiếp theo sẽ không bị ảnh hưởng bởi các thay đổi trong test trước.
     sandbox.restore();
   });
 
   describe("getAllUsers", () => {
-    // đối với get user list có hai đầu status là 200 và 500 sẽ tương đương 2 test case test output ra được status đó
     it("should return all users with status 200", async () => {
-    // Tạo đây giả sử có một user có username là testuser
       const mockUsers = [{ id: 1, username: "testuser" }];
-      // khi gọi tới hàm fetchAllUsers của DAO sẽ trả về testuser có nghĩa khi gọi tới hàm list có giữ liệu đầu ra
       sandbox.stub(userDao, "fetchAllUsers").resolves(mockUsers);
 
-      // gọi tới api get list
       await userController.getAllUsers(req, res);
 
-      // check status có đúng 200 không
       expect(res.status.calledWith(200)).to.be.true;
       expect(res.json.calledWith(mockUsers)).to.be.true;
     });
 
-    // test case tiếp theo cần test là 500
     it("should handle errors and return status 500", async () => {
-    // đầu status 500 có nghĩa là đã sảy ra lỗi trong quá trình query dữ liệu
-    // tương tự tới test case bên trên nhưng thai vì trả ra user thì set khi gọi tới hàm fetchAllUsers của DAo sẽ trả về một exception
       sandbox.stub(userDao, "fetchAllUsers").rejects(new Error("Database error"));
 
-      // gọi api
       await userController.getAllUsers(req, res);
 
-      // test xem api có trả về lỗi hay không
       expect(res.status.calledWith(500)).to.be.true;
       expect(res.json.calledWith({ error: "Error: Database error" })).to.be.true;
     });
   });
-  /*
-  Với ví dụ trên => để test được một API thì cần thực hiện các bước sau
-  - Xác định số lượng test case sẽ trả ra: Số lượng test case sẽ nằm ở các đầu if else có return hoặc trả về status
-  - Khi đã xác định được api đó có bao nhiêu test case thi tiến hành code test
-  - Để code unit test:
-    + Định nghĩa dữ liệu đầu ra cho service là tầng xử lý logic trong project này là DAO
-    + Các test case của if sau cần thỏa mãn điều kiện của if phía trước (xem tại ví dụ change password trả về 404)
-    + Call tới API tại controller
-    + Check dữ liệu trả về có đúng không
-   */
 
   describe("getUserByUserName", () => {
     it("should return user by username with status 200", async () => {
@@ -162,8 +133,12 @@ khi service trả về giữ liệu như vậy api chạy có đúng yêu cầu 
 
       await userController.forgetPass(req, res);
 
-      // test case này không có status mà trả về message thì check message khớp không
       expect(res.send.calledWith({ Status: "Không tìm thấy người dùng" })).to.be.true;
     });
   });
+
+
+
+  
+  
 });

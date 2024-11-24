@@ -26,6 +26,9 @@ const changePass = async (req, res) => {
   try {
     const { username } = req.params;
     const { oldPassword, newPassword } = req.body;
+    console.log('Username:', username);
+    console.log('Old Password:', oldPassword);
+    console.log('New Password:', newPassword);
 
     if (!username || !oldPassword || !newPassword) {
       return res
@@ -40,8 +43,11 @@ const changePass = async (req, res) => {
     }
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
+    console.log('Password match:', isMatch);
 
     if (!isMatch) {
+      console.log('Old password is incorrect');
+
       return res
         .status(400)
         .json({ status: false, message: "Mật khẩu cũ không đúng" });
@@ -57,7 +63,8 @@ const changePass = async (req, res) => {
       .status(200)
       .json({ status: true, message: "Thay đổi mật khẩu thành công" });
   } catch (error) {
-    console.error("Lỗi trong khi thay đổi mật khẩu", error);
+    console.error('Error in changePass:', error);
+
     res
       .status(500)
       .json({ status: false, message: "Server error", error: error.message });

@@ -69,6 +69,36 @@ describe("Appliance Controller Tests", () => {
       expect(res.status.calledWith(500)).to.be.true;
       expect(res.json.calledWith({ error: "Error: Database error" })).to.be.true;
     });
+
+    it("should return an empty array if no appliances are found", async () => {
+      const mockAppliances = [];
+  
+      sandbox.stub(appliancesDao, "fetchAllAppliances").resolves(mockAppliances);
+  
+      await appliancesController.getAllAppliances(req, res);
+  
+      expect(res.status.calledWith(200)).to.be.true;
+      expect(res.json.calledWith(mockAppliances)).to.be.true;
+    });
+  
+    it("should return status 500 if fetchAllAppliances returns null", async () => {
+      sandbox.stub(appliancesDao, "fetchAllAppliances").resolves(null);
+  
+      await appliancesController.getAllAppliances(req, res);
+  
+      expect(res.status.calledWith(500)).to.be.true;
+      expect(res.json.calledWith({ error: "Error: Cannot retrieve appliances" })).to.be.true;
+    });
+  
+    it("should return status 500 if fetchAllAppliances returns undefined", async () => {
+      sandbox.stub(appliancesDao, "fetchAllAppliances").resolves(undefined);
+  
+      await appliancesController.getAllAppliances(req, res);
+  
+      expect(res.status.calledWith(500)).to.be.true;
+      expect(res.json.calledWith({ error: "Error: Cannot retrieve appliances" })).to.be.true;
+    });
+  
   });
 
   describe("getAllAppliancesByCategories", () => {

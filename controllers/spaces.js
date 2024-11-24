@@ -584,7 +584,6 @@ const updateSpaceCensorshipAndCommunityStandards = async (req, res) => {
 
     return res.status(200).json({ success: true, space: updatedSpace });
   } catch (error) {
-    console.error('Error updating space and community standards:', error);
     return res.status(500).json({ success: false, message: 'Error updating space and community standards' });
   }
 };

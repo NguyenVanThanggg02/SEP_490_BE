@@ -678,6 +678,4 @@ describe("createNewSpace", () => {
 });
 
 
-
-
 });

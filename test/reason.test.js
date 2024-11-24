@@ -62,5 +62,34 @@ describe("Reason Controller-Tests", () => {
           expect(res.json.calledWith({ error: "Error: Database error" })).to.be.true;
         });
       });
+      it("should return an empty array if no reasons are found", async () => {
+        const mockReasons = [];
+
+        sandbox.stub(reasonsDao, "fetchAllReasons").resolves(mockReasons);
+
+        await reasonController.getAllReasons(req, res);
+
+        expect(res.status.calledWith(200)).to.be.true;
+        expect(res.json.calledWith(mockReasons)).to.be.true;
+    });
+
+    it("should return status 500 if fetchAllReasons returns null", async () => {
+        sandbox.stub(reasonsDao, "fetchAllReasons").resolves(null);
+
+        await reasonController.getAllReasons(req, res);
+
+        expect(res.status.calledWith(500)).to.be.true;
+        expect(res.json.calledWith({ error: "Error: Cannot retrieve reasons" })).to.be.true;
+    });
+
+    it("should return status 500 if fetchAllReasons returns undefined", async () => {
+        sandbox.stub(reasonsDao, "fetchAllReasons").resolves(undefined);
+
+        await reasonController.getAllReasons(req, res);
+
+        expect(res.status.calledWith(500)).to.be.true;
+        expect(res.json.calledWith({ error: "Error: Cannot retrieve reasons" })).to.be.true;
+    });
+
       
 });
