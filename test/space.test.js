@@ -1,13 +1,16 @@
 import { expect } from "chai";
 import sinon from "sinon";
 import spaceController from "../controllers/spaces.js";
-import { spaceDao } from "../dao/index.js";
+import { notificationDao, spaceDao } from "../dao/index.js";
 import Spaces from "../models/spaces.js";
 import cloudinary from "../cloudinary.config.js";
 import express from 'express';
 import spaceRouter from '../routes/spaces.js';
 import UserNeeds from "../models/userNeeds.js";
 import Users from "../models/users.js";
+import Appliances from "../models/appliances.js";
+import CommunityStandards from "../models/communityStandards.js";
+import mongoose from "mongoose";
 
 
 describe("Space Controller-Tests", () => {
@@ -584,6 +587,96 @@ describe("getBookingDetailsSpaces", () => {
     expect(res.json.calledWith({ message: "Get space with booking info failed" })).to.be.true;
   });
 });
+
+
+describe("createNewSpace", () => {
+  let req, res, next, sandbox;
+
+  beforeEach(() => {
+    sandbox = sinon.createSandbox();
+    req = {
+      body: {
+        name: "Test Space",
+        description: "A lovely space for events",
+        location: "Some Location",
+        area: 100,
+        rulesId: "rulesId",
+        userId: "userId",
+        pricePerHour: 20,
+        pricePerDay: 100,
+        pricePerWeek: 500,
+        pricePerMonth: 2000,
+        images: [{ public_id: "img1", url: "http://example.com/img1" }],
+        censorship: false,
+        status: "active",
+        categoriesId: "categoryId",
+        appliancesId: ["applianceId1", "applianceId2"],
+        reportCount: 0,
+        isGoldenHour: false,
+        goldenHourDetails: {},
+        favorite: false,
+        latLng: [10.123456, 106.123456],
+      },
+    };
+    res = {
+      status: sandbox.stub().returnsThis(),
+      json: sandbox.stub(),
+    };
+    next = sandbox.stub(); // Middleware for error handling
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+  });
+
+  it("should create a new space successfully", async () => {
+    const mockCommunityStandards = {
+      _id: new mongoose.Types.ObjectId(), // Correctly instantiate ObjectId
+      reasons: [],
+      customReason: [],
+    };
+    const mockNewSpace = {
+      _id: new mongoose.Types.ObjectId(), // Correctly instantiate ObjectId
+      name: req.body.name,
+    };
+
+    sandbox.stub(CommunityStandards.prototype, "save").resolves(mockCommunityStandards);
+    sandbox.stub(Spaces, "create").resolves(mockNewSpace);
+    sandbox.stub(Users, "find").resolves([{ _id: "adminId", role: 1 }]);
+    sandbox.stub(Users, "findById").resolves({ fullname: "Admin User" });
+    sandbox.stub(notificationDao, "saveAndSendNotification").resolves();
+
+    await spaceController.createNewSpace(req, res, next);
+
+    expect(res.status.calledWith(201)).to.be.true;
+    expect(res.json.calledWith({ success: true, space: mockNewSpace })).to.be.true;
+
+    // Check if notification was sent
+    expect(notificationDao.saveAndSendNotification.calledOnce).to.be.true;
+  });
+
+  it("should return 400 if required fields are missing", async () => {
+    delete req.body.name; // Removing required field
+
+    await spaceController.createNewSpace(req, res, next);
+
+    expect(res.status.calledWith(400)).to.be.true;
+    expect(res.json.calledWith({
+      success: false,
+      message: 'Missing required fields',
+    })).to.be.true;
+  });
+
+  it("should handle errors gracefully", async () => {
+    sandbox.stub(CommunityStandards.prototype, "save").throws(new Error("Database error"));
+
+    await spaceController.createNewSpace(req, res, next);
+
+    expect(res.status.calledWith(500)).to.be.true;
+    expect(res.json.calledWith({ success: false, message: "Error creating space: Database error" })).to.be.true;
+  });
+});
+
 
 
 

@@ -255,7 +255,6 @@ const createNewSpace = async (req, res) => {
     });
     return res.status(201).json({ success: true, space: newSpace });
   } catch (error) {
-    console.error('Error:', error);
     res.status(500).json({ success: false, message: `Error creating space: ${error.message}` });
   }  
 };
