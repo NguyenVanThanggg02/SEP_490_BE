@@ -25,7 +25,6 @@ userNeedRouter.post("/:userId/needs", async (req, res) => {
 
     await Users.findByIdAndUpdate(userId, {
       needs: userNeeds._id,
-      firstLogin: false,
     });
 
     res

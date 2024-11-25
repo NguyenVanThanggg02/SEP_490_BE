@@ -4,7 +4,7 @@ const bankAccountSchema = new Schema(
   {
     bank: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "bank",
+      ref: "banks",
       required: true,
     },
     user: {

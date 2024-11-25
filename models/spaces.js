@@ -4,14 +4,14 @@ const spacesSchema = new Schema(
   {
     locationPoint: {
       type: {
-          type: String,
-          enum: ['Point'],
-          default: 'Point'
+        type: String,
+        enum: ["Point"],
+        default: "Point",
       },
       coordinates: {
-          type: [Number],
-          index: '2dsphere'
-      }
+        type: [Number],
+        index: "2dsphere",
+      },
     },
     latLng: {
       type: Array(Number),
@@ -49,31 +49,34 @@ const spacesSchema = new Schema(
     },
     pricePerHour: {
       type: Number,
-      required: true,
+      // required: true,
     },
     pricePerDay: {
       type: Number,
-      required: true,
+      // required: true,
     },
-    pricePerWeek: {
-      type: Number,
-      required: true,
-    },
+    // pricePerWeek: {
+    //   type: Number,
+    //   // required: true,
+    // },
     pricePerMonth: {
       type: Number,
-      required: true,
+      // required: true,
     },
-    images: [
-      {
-        public_id: {
-          type: String,
+    images: {
+      type: [
+        {
+          public_id: {
+            type: String,
+          },
+          url: {
+            type: String,
+            required: true,
+          },
         },
-        url: {
-          type: String,
-          required: true
-        }
-      }
-    ],
+      ],
+      default: [],
+    },
     censorship: {
       type: String,
       enum: ["Chờ duyệt", "Chấp nhận", "Từ chối"],
@@ -89,8 +92,7 @@ const spacesSchema = new Schema(
       ref: "categories",
       required: true,
     },
-    appliancesId:
-    {
+    appliancesId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "appliances",
       required: true,
@@ -100,17 +102,25 @@ const spacesSchema = new Schema(
     },
     isGoldenHour: { type: Boolean, default: false },
     goldenHourDetails: {
-      startTime: { type: String },
-      endTime: { type: String },
-      priceIncrease: { type: Number },
+      type: [
+        {
+          startTime: { type: String },
+          endTime: { type: String },
+          priceIncrease: { type: Number },
+        },
+      ],
+      default: [],
     },
-    reviews: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "reviews",
-        require: false,
-      },
-    ],
+    reviews: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "reviews",
+          require: true,
+        },
+      ],
+      default: [],
+    },
     reportCount: {
       type: Number,
       default: 0,
@@ -121,8 +131,8 @@ const spacesSchema = new Schema(
     },
     isUpdate: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
   {
     timestamps: true,

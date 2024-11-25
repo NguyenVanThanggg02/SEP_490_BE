@@ -10,9 +10,11 @@ import {
 const bankRouter = express.Router();
 bankRouter.get("/", async (req, res, next) => {
   try {
-    const bank = await Bank.find({}).exec();
-    if (bank.lengt === 0) {
+
+    const bank = await Bank.find();
+    if (bank.length === 0) {
       res.status(404).send({ message: "Bank not found" });
+      return
     }
     res.status(200).json(bank);
   } catch (error) {

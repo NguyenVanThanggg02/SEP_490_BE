@@ -13,23 +13,23 @@ const bookingsSchema = new Schema(
       required: true,
     },
     startDate: {
-      // Previously checkIn
+      // Trước là checkIn
       type: Date,
       required: true,
     },
     endDate: {
-      // Previously checkOut
+      // Trước là checkOut
       type: Date,
       required: true,
     },
     rentalType: {
-      // New field to specify rental type
+      // Thêm trường mới để xác định loại hình thuê
       type: String,
       enum: ["hour", "day", "week", "month"],
       required: true,
     },
     selectedSlots: [
-      // To store time slots when renting by hour
+      // Để lưu trữ các khung giờ khi thuê theo giờ
       {
         date: { type: Date },
         startTime: { type: String },
@@ -63,9 +63,29 @@ const bookingsSchema = new Schema(
       startTime: { type: String, required: false },
       endTime: { type: String, required: false },
     },
-    ownerApprovalStatus: {
+    // ownerApprovalStatus: {
+    //   type: String,
+    //   enum: ["pending", "accepted", "declined"],
+    //   default: "accepted",
+    // },
+    minusTransId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "transactions",
+    },
+    plusTransId: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "transactions",
+        default: [],
+      },
+    ],
+    refundTransId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "transactions",
+    },
+    plusStatus: {
       type: String,
-      enum: ["pending", "accepted", "declined"],
+      enum: ["pending", "full_plus", "1_plus", "2_plus", "3_plus"],
       default: "pending",
     },
   },

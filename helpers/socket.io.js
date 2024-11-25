@@ -1,21 +1,48 @@
-import { Server } from "socket.io";
-import http from "http";
+import { Server } from 'socket.io';
 
-const server = http.createServer(app); // app là Express app của bạn
-const io = new Server(server);
+let io;
 
-// Khi một client kết nối
-io.on("connection", (socket) => {
-  console.log("A user connected");
+let connectedIdList = [];
+let userList = [];
 
-  // Nghe khi client ngắt kết nối
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
+export function initSocket(server) {
+  io = new Server(server, {
+    cors: {
+      origin: 'http://localhost:3000', // Allow frontend access
+      methods: ['GET', 'POST'],
+    },
   });
-});
 
-// Trong hàm cập nhật status booking
-if (status === "completed") {
-  await sendEmailBookingCompleted(tenant.email, updatedBooking);
-  io.emit("bookingCompleted", updatedBooking); // Phát sự kiện cho tất cả client
+  io.on('connection', (socket) => {
+    connectedIdList = connectedIdList.filter(connectedId => connectedId !== socket.id);
+    connectedIdList.push(socket.id);
+
+    socket.on('register', (user) => {
+      userList = userList.filter(user => user.connectedId !== socket.id);
+      userList.push({
+        id: user ? user.id : null,
+        role: user ? user.role: null,
+        connectedId: socket.id
+      });
+    });
+
+    socket.on('disconnect', () => {
+      connectedIdList = connectedIdList.filter(connectedId => connectedId !== socket.id);
+      userList = userList.filter(user => user.connectedId !== socket.id);
+    });
+  });
+
+  return io;
 }
+
+export function getSocket() {
+  if (!io) {
+    throw new Error('Socket.io khong ton tai, goi initSocket truoc');
+  }
+  return io;
+}
+
+export function getUserList() {
+  return userList;
+}
+
