@@ -276,6 +276,8 @@ export const adminGetAllTransaction = async (req, res) => {
       searchQuery['$or'] = [
         { orderId: new RegExp(searchParams, 'i') }, 
         { description: new RegExp(searchParams, 'i') }, 
+        { status: new RegExp(searchParams, 'i') }, 
+        { type: new RegExp(searchParams, 'i') }, 
         { 'userId.avatar': new RegExp(searchParams, 'i') },
         { 'userId.fullname': new RegExp(searchParams, 'i') },
         { 'userId.gmail': new RegExp(searchParams, 'i') },
