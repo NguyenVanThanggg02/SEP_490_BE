@@ -32,7 +32,7 @@ spaceRouter.delete('/delete/:id', spaceController.deleteSpace);
 spaceRouter.put('/update-censorship/:id', spaceController.updateSpaceCensorshipAndCommunityStandards);
 spaceRouter.get("/proposed/:userId", spaceController.getProposedSpaces);
 spaceRouter.get("/statistic/:userId", spaceController.getBookingDetailsSpaces);
-
+spaceRouter.get("/with-bookings/:spaceId",spaceController.getBookingDetailsSpace);
 
 // tim kiem space
 spaceRouter.get("/search/:name", async (req, res, next) => {
@@ -115,12 +115,12 @@ spaceRouter.get("/compare-spaces-differences", async (req, res) => {
         space2: space2.pricePerDay,
       };
     }
-    if (space1.pricePerWeek !== space2.pricePerWeek) {
-      differences.pricePerWeek = {
-        space1: space1.pricePerWeek,
-        space2: space2.pricePerWeek,
-      };
-    }
+    // if (space1.pricePerWeek !== space2.pricePerWeek) {
+    //   differences.pricePerWeek = {
+    //     space1: space1.pricePerWeek,
+    //     space2: space2.pricePerWeek,
+    //   };
+    // }
     if (space1.pricePerMonth !== space2.pricePerMonth) {
       differences.pricePerMonth = {
         space1: space1.pricePerMonth,
@@ -170,7 +170,7 @@ spaceRouter.get("/compare-spaces", async (req, res) => {
         area: space1.area,
         pricePerHour: space1.pricePerHour,
         pricePerDay: space1.pricePerDay,
-        pricePerWeek: space1.pricePerWeek,
+        // pricePerWeek: space1.pricePerWeek,
         pricePerMonth: space1.pricePerMonth,
         status: space1.status,
         images:
@@ -185,7 +185,7 @@ spaceRouter.get("/compare-spaces", async (req, res) => {
         area: space2.area,
         pricePerHour: space2.pricePerHour,
         pricePerDay: space2.pricePerDay,
-        pricePerWeek: space2.pricePerWeek,
+        // pricePerWeek: space2.pricePerWeek,
         pricePerMonth: space2.pricePerMonth,
         status: space2.status,
         latLng: space2.latLng

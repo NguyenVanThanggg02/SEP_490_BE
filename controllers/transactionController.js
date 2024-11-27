@@ -276,6 +276,9 @@ export const adminGetAllTransaction = async (req, res) => {
       searchQuery['$or'] = [
         { orderId: new RegExp(searchParams, 'i') }, 
         { description: new RegExp(searchParams, 'i') }, 
+        { status: new RegExp(searchParams, 'i') }, 
+        { type: new RegExp(searchParams, 'i') }, 
+        { 'userId.avatar': new RegExp(searchParams, 'i') },
         { 'userId.fullname': new RegExp(searchParams, 'i') },
         { 'userId.gmail': new RegExp(searchParams, 'i') },
         { 'user.phone': new RegExp(searchParams, 'i') }
@@ -284,7 +287,7 @@ export const adminGetAllTransaction = async (req, res) => {
     const transactionList = await TransactionsModel.find(searchQuery)
     .populate({
       path: 'userId',
-      select: 'fullname gmail phone'  // Only select these fields from the User model
+      select: 'avatar fullname gmail phone'  // Only select these fields from the User model
     }).sort({
       createdAt: -1,
     })
@@ -292,6 +295,7 @@ export const adminGetAllTransaction = async (req, res) => {
     const dataRes = transactionList.map((transaction) => {
       return {
         transactionId: transaction._id.toString(),
+        userInfoAvatar: [transaction.userId.avatar].join("\n"),
         userInfo: [transaction.userId.fullname, transaction.userId.gmail, transaction.userId.phone].join("\n"),
         orderId: transaction.orderId,
         amount: transaction.amount,

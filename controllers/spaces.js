@@ -174,7 +174,7 @@ const createNewSpace = async (req, res) => {
       userId,
       pricePerHour,
       pricePerDay,
-      pricePerWeek,
+      // pricePerWeek,
       pricePerMonth,
       images,
       censorship,
@@ -226,7 +226,7 @@ const createNewSpace = async (req, res) => {
       userId,
       pricePerHour,
       pricePerDay,
-      pricePerWeek,
+      // pricePerWeek,
       pricePerMonth,
       images: formattedImages,
       censorship,
@@ -268,7 +268,7 @@ const updateSpace = async (req, res) => {
       rulesId,
       pricePerHour,
       pricePerDay,
-      pricePerWeek,
+      // pricePerWeek,
       pricePerMonth,
       images,
       location,
@@ -301,7 +301,7 @@ const updateSpace = async (req, res) => {
       name,
       pricePerHour,
       pricePerDay,
-      pricePerWeek,
+      // pricePerWeek,
       pricePerMonth,
       images: formattedImages,
       location,
@@ -587,6 +587,69 @@ const updateSpaceCensorshipAndCommunityStandards = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Error updating space and community standards' });
   }
 };
+//của thắng
+// const getBookingDetailsSpaces = async (req, res) => {
+//   const userId = req.params.userId;
+
+//   if (!userId)
+//     return res.status(404).json({
+//       message: "All field is required",
+//     });
+//   try {
+//     const spaces = await Spaces.find({ userId }, "name").lean();
+//     const spacesWithBook = await Promise.all(
+//       spaces.map(async (space, i) => {
+//         const bookings = await Bookings.find(
+//           { spaceId: space._id.toString(), status: "completed" },
+//           "createdAt plusTransId"
+//         )
+//           .lean()
+//           .populate("plusTransId");
+
+//         return {
+//           ...space,
+//           bookings,
+//         };
+//       })
+//     );
+
+//     res.json({
+//       message: "Get space with booking info successfully",
+//       data: spacesWithBook,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Get space with booking info failed",
+//     });
+//   }
+// };
+const getBookingDetailsSpace = async (req, res) => {
+  const spaceId = req.params.spaceId;
+
+  if (!spaceId)
+    return res.status(404).json({
+      message: "All field is required",
+    });
+  try {
+    const space = await Spaces.findById(spaceId).lean();
+    const currentDate = new Date();
+    const datePart = currentDate.toISOString().split("T")[0];
+    const currentDateSetTo0h = new Date(`${datePart}T00:00:00.000Z`);
+    const bookings = await Bookings.find(
+      // booking not checkout yet
+      { spaceId, endDate: { $gte: currentDateSetTo0h } }
+    ).lean();
+
+    res.json({
+      message: "Get space with booking info successfully",
+      data: { ...space, bookings },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Get space with booking info failed",
+    });
+  }
+};
 // const getBookingDetailsSpaces = async (req, res) => {
 //   const userId = req.params.userId;
 
@@ -673,5 +736,6 @@ export default {
   updateSpace,
   getProposedSpaces,
   getBookingDetailsSpaces,
+  getBookingDetailsSpace,
   getFilteredSpaces
 }
