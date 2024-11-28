@@ -42,6 +42,7 @@ export const transactionCreate = async (req, res) => {
       res.status(200).json(data);
       return;
     } else if (type === "Rút tiền") {
+      const deductedAmount = amount * 0.95;
       if (!user.balanceAmount || user.balanceAmount < Number(amount) || !beneficiaryAccountNumber || !beneficiaryBankCode) {
         res
           .status(400)
@@ -55,6 +56,7 @@ export const transactionCreate = async (req, res) => {
       await transactionDao.save({
         userId,
         amount,
+        deductedAmount, 
         description: `${user.fullname} rút tiền từ tài khoản`,
         orderId: "SYSTEM" + new Date().getTime(),
         type,
@@ -249,6 +251,7 @@ export const getAllTransaction = async (req, res) => {
       return {
         transactionId: transaction._id.toString(),
         amount: transaction.amount,
+        deductedAmount: transaction.deductedAmount,
         description: transaction.description,
         type: transaction.type,
         status: transaction.status,
@@ -299,6 +302,7 @@ export const adminGetAllTransaction = async (req, res) => {
         userInfo: [transaction.userId.fullname, transaction.userId.gmail, transaction.userId.phone].join("\n"),
         orderId: transaction.orderId,
         amount: transaction.amount,
+        deductedAmount: transaction.deductedAmount,
         description: transaction.description,
         type: transaction.type,
         status: transaction.status,
@@ -326,12 +330,16 @@ export const adminConfirmTransaction = async (req, res) => {
     }
     
     if (result === "Đồng ý - Khởi tạo") {
+      console.log('Số tiền gốc: ', transaction.amount); 
+      const deductedAmount = transaction.amount * 0.95; 
+      console.log('Số tiền đã giảm: ', deductedAmount); 
+
       if (transaction.beneficiaryBankCode === "MOMO") {
         res.status(200).json({ 
           transactionId,
           beneficiaryBankCode: transaction.beneficiaryBankCode, 
           beneficiaryAccountNumber: transaction.beneficiaryAccountNumber,
-          amount: transaction.amount,
+          amount: deductedAmount, // Dùng số tiền đã giảm
           qrUrl: "https://test-payment.momo.vn/payment-platform/images/qr-code-download-app.png"
         });
         return;
@@ -340,14 +348,17 @@ export const adminConfirmTransaction = async (req, res) => {
           transactionId,
           beneficiaryBankCode: transaction.beneficiaryBankCode, 
           beneficiaryAccountNumber: transaction.beneficiaryAccountNumber,
-          amount: transaction.amount,
-          qrUrl: `https://img.vietqr.io/image/${transaction.beneficiaryBankCode}-${transaction.beneficiaryAccountNumber}-compact2.jpg?amount=${transaction.amount}&addInfo=${transaction.description}&accountName=${transaction.userId.fullname}`});
+          amount: deductedAmount, // Dùng số tiền đã giảm
+          qrUrl: `https://img.vietqr.io/image/${transaction.beneficiaryBankCode}-${transaction.beneficiaryAccountNumber}-compact2.jpg?amount=${deductedAmount}&addInfo=${transaction.description}&accountName=${transaction.userId.fullname}`
+        });
         return;
       }
     }
+    
 
     if (result === "Đồng ý - Xác nhận") {
-      await TransactionsModel.updateOne({_id: transactionId}, {status: "Thành công"})
+      const deductedAmount = transaction.amount * 0.95;
+      await TransactionsModel.updateOne({_id: transactionId}, {status: "Thành công",deductedAmount})
       await notificationDao.saveAndSendNotification(
         transaction.userId._id.toString(),
         "Yêu cầu rút tiền của bạn đã được phê duyệt.",
