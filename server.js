@@ -201,7 +201,7 @@ server.listen(Port, async () => {
   }
 });
 
-cron.schedule("* * * * *", refundOwnerSpace.plusHour)
+cron.schedule("*/5 * * * *", refundOwnerSpace.plusHour)
 
 
 cron.schedule("* * * * *", refundOwnerSpace.plusDay)

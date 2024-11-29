@@ -186,6 +186,7 @@ const createNewSpace = async (req, res) => {
       goldenHourDetails,
       favorite,
       latLng,
+      detailAddress
     } = req.body;
 
     // Kiểm tra các trường bắt buộc
@@ -239,7 +240,8 @@ const createNewSpace = async (req, res) => {
       communityStandardsId: communityStandardsId, // Gán ID cho space
       favorite,
       latLng,
-      locationPoint: {type: "Point", coordinates: latLng && latLng.length === 2 ? [latLng[1], latLng[0]] : null}
+      locationPoint: {type: "Point", coordinates: latLng && latLng.length === 2 ? [latLng[1], latLng[0]] : null},
+      detailAddress
     };
     const newSpace = await Spaces.create(spaceData); // Tạo không đồng bộ
     const adminList = await Users.find({ role: 1 });
@@ -277,7 +279,8 @@ const updateSpace = async (req, res) => {
       appliancesId,
       isGoldenHour,
       goldenHourDetails,
-      userId 
+      userId ,
+      detailAddress
     } = req.body;
 
     console.log("Received userId:", userId); 
@@ -314,6 +317,7 @@ const updateSpace = async (req, res) => {
       isGoldenHour,
       goldenHourDetails,
       censorship: "Chờ duyệt",
+      detailAddress
     };
 
     const updatedRules = await Rules.findByIdAndUpdate(rulesId._id, { ...rulesId }).lean();
