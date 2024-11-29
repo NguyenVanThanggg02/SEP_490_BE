@@ -113,11 +113,20 @@ export const getAllData = async (req, res) => {
     };
 
     // Transaction =================
+    const {transactionFilter} = req.body
+    let transactionByMonthFrom;
+    let transactionByMonthTo;
+    if (transactionFilter) {
+      transactionByMonthFrom = dayjs(`${transactionFilter.from.split('/').reverse().join('/')}/01`, 'YYYY/MM/DD').startOf('months')
+      transactionByMonthTo = dayjs(`${transactionFilter.to.split('/').reverse().join('/')}/01`, 'YYYY/MM/DD').endOf('months')
+    } else {
+      transactionByMonthFrom = dayjs().subtract(6, 'month').startOf('months')
+      transactionByMonthTo =  dayjs().endOf('month')
+    }
     let transactionByMonths = [];
-    for (let i = 0; i < 6; i++) {
-      const month = dayjs().subtract(i, "month").format("YYYY-MM"); // Format as YYYY-MM
+    for (let i = transactionByMonthFrom; i.isBefore(transactionByMonthTo); i=i.add(1, 'month')) {
       transactionByMonths.push({
-        month,
+        month: i.format('MM/YYYY'),
         minusAmount: 0,
         plusAmount: 0,
         refundAmount: 0,
@@ -127,39 +136,39 @@ export const getAllData = async (req, res) => {
       {
         $match: {
           type: "Trừ tiền",
+          createdAt: { $gte: transactionByMonthFrom.toDate(), $lte: transactionByMonthTo.toDate() }, 
         },
       },
       {
         $group: {
           _id: {
-            $dateToString: { format: "%Y-%m", date: "$createdAt" },
+            $dateToString: { format: "%m/%Y", date: "$createdAt" },
           },
           totalAmount: { $sum: "$amount" },
         },
       },
       {
-        $sort: { _id: -1 },
-      },
-      {
-        $limit: 6,
+        $sort: { _id: 1 },
       },
     ]);
+    
     const plusQuery = await TransactionsModel.aggregate([
       {
         $match: {
-          type: "Cộng tiền",
+          type: "Cộng tiền",          
+          createdAt: { $gte: transactionByMonthFrom.toDate(), $lte: transactionByMonthTo.toDate() }, 
         },
       },
       {
         $group: {
           _id: {
-            $dateToString: { format: "%Y-%m", date: "$createdAt" },
+            $dateToString: { format: "%m/%Y", date: "$createdAt" },
           },
           totalAmount: { $sum: "$amount" },
         },
       },
       {
-        $sort: { _id: -1 },
+        $sort: { _id: 1 },
       },
       {
         $limit: 6,
@@ -168,19 +177,20 @@ export const getAllData = async (req, res) => {
     const refundQuery = await TransactionsModel.aggregate([
       {
         $match: {
-          type: "Hoàn tiền",
+          type: "Hoàn tiền",        
+          createdAt: { $gte: transactionByMonthFrom.toDate(), $lte: transactionByMonthTo.toDate() }, 
         },
       },
       {
         $group: {
           _id: {
-            $dateToString: { format: "%Y-%m", date: "$createdAt" },
+            $dateToString: { format: "%m/%Y", date: "$createdAt" },
           },
           totalAmount: { $sum: "$amount" },
         },
       },
       {
-        $sort: { _id: -1 },
+        $sort: { _id: 1 },
       },
       {
         $limit: 6,
@@ -307,30 +317,50 @@ export const getAllData = async (req, res) => {
     };
 
     // booking ============================    
+    const {bookingRentalTypeFilter} = req.body
+    let bookingFrom;
+    let bookingTo;
+    if (bookingRentalTypeFilter) {
+      bookingFrom = dayjs(`${bookingRentalTypeFilter.from.split('/').reverse().join('/')}/01`, 'YYYY/MM/DD').startOf('months')
+      bookingTo = dayjs(`${bookingRentalTypeFilter.to.split('/').reverse().join('/')}/01`, 'YYYY/MM/DD').endOf('months')
+    } else {
+      bookingFrom = dayjs().subtract(6, 'month').startOf('months')
+      bookingTo =  dayjs().endOf('month')
+    }
+
     let bookingByDays = [];
-    for (let i = 0; i < 30; i++) {
-      const day = dayjs().subtract(i, "day").format("YYYY-MM-DD"); // Format as YYYY-MM
+    
+    for (let i = bookingFrom; i.isBefore(bookingTo); i = i.add(1, "day")) {
       bookingByDays.push({
-        day,
+        day: i.format("YYYY-MM-DD"),
         rentalTypeHour: 0,
         rentalTypeDay: 0,
         rentalTypeMonth: 0,
       });
     }
-    bookingByDays = bookingByDays.reverse()
     const bookingQuery = await Booking.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: transactionByMonthFrom.toDate(),
+            $lte: transactionByMonthTo.toDate(),
+          },
+        },
+      },
       {
         $group: {
           _id: {
-            createdAt: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-            rentalType: "$rentalType" 
+            createdAt: {
+              $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+            },
+            rentalType: "$rentalType",
           },
-          count: { $sum: 1 } 
-        }
+          count: { $sum: 1 },
+        },
       },
       {
-        $sort: { "_id.createdAt": 1 }
-      }
+        $sort: { "_id.createdAt": 1 },
+      },
     ]);
     bookingByDays = bookingByDays.map((bookingByDay) => {
       const newBookingByDay = {...bookingByDay}
@@ -347,7 +377,7 @@ export const getAllData = async (req, res) => {
     const bookingRentalType = {
       title: "Số lượng booking",
       total: totalBooking1Month,
-      interval: "Số lượng booking trong 30 ngày gần nhất",
+      interval: "Số lượng booking theo ngày trong tháng",
       data: [
         {
           
@@ -365,7 +395,7 @@ export const getAllData = async (req, res) => {
         data: bookingByDays.map(booking => booking.rentalTypeMonth)
         }, 
       ],
-      axis: bookingByDays.map(booking => dayjs(booking.day).format('MMM DD'))
+      axis: bookingByDays.map(booking => dayjs(booking.day).format('DD/MM/YY'))
     }
 
     res.status(200).json({ user, space, transaction, spaceCensorship, bookingRentalType });
