@@ -194,7 +194,115 @@ describe("checkHourAvailability", () => {
     });
   });
 
+  describe('getListBookingOfUser', () => {
+    let fetchListBookingOfUserStub;
   
+    beforeEach(() => {
+      fetchListBookingOfUserStub = sinon.stub(BookingDAO, 'fetchListBookingOfUser');
+    });
+  
+    afterEach(() => {
+      sinon.restore();
+    });
+  
+    it('should return booking list and status 200 when bookings are found', async () => {
+      const fakeBookingList = [
+        {
+          _id: 'bookingId123',
+          userId: 'userId123',
+          items: [{ spaceId: 'spaceId123' }],
+          isAllowCancel: true,
+        },
+      ];
+  
+      fetchListBookingOfUserStub.resolves(fakeBookingList);
+  
+      const req = { params: { id: 'userId123' } };
+      const res = {
+        status: sinon.stub().returnsThis(),
+        json: sinon.stub(),
+      };
+  
+      await bookingController.getListBookingOfUser(req, res);
+  
+      expect(fetchListBookingOfUserStub.calledOnceWith('userId123')).to.be.true;
+      expect(res.status.calledOnceWith(200)).to.be.true;
+      expect(res.json.calledOnceWith(fakeBookingList)).to.be.true;
+    });
+  
+    it('should return 404 if no bookings are found', async () => {
+      fetchListBookingOfUserStub.resolves([]);
+  
+      const req = { params: { id: 'userId123' } };
+      const res = {
+        status: sinon.stub().returnsThis(),
+        json: sinon.stub(),
+      };
+  
+      await bookingController.getListBookingOfUser(req, res);
+  
+      expect(fetchListBookingOfUserStub.calledOnceWith('userId123')).to.be.true;
+      expect(res.status.calledOnceWith(404)).to.be.true;
+      expect(res.json.calledOnceWith('Not Found')).to.be.true;
+    });
+  
+    it('should return 500 if an error occurs during fetching bookings', async () => {
+      fetchListBookingOfUserStub.rejects(new Error('Database error'));
+  
+      const req = { params: { id: 'userId123' } };
+      const res = {
+        status: sinon.stub().returnsThis(),
+        json: sinon.stub(),
+      };
+  
+      await bookingController.getListBookingOfUser(req, res);
+  
+      expect(fetchListBookingOfUserStub.calledOnceWith('userId123')).to.be.true;
+      expect(res.status.calledOnceWith(500)).to.be.true;
+      expect(res.json.calledWith({ message: "Error: Database error" })).to.be.true;
+    });
+  
+    it('should return booking list with populated spaceId', async () => {
+      const fakeBookingList = [
+        {
+          _id: 'bookingId123',
+          userId: 'userId123',
+          items: [{ spaceId: 'spaceId123' }],
+          isAllowCancel: true,
+        },
+      ];
+  
+      fetchListBookingOfUserStub.resolves(fakeBookingList);
+  
+      const req = { params: { id: 'userId123' } };
+      const res = {
+        status: sinon.stub().returnsThis(),
+        json: sinon.stub(),
+      };
+  
+      await bookingController.getListBookingOfUser(req, res);
+  
+      expect(fetchListBookingOfUserStub.calledOnceWith('userId123')).to.be.true;
+      expect(res.status.calledOnceWith(200)).to.be.true;
+      expect(res.json.calledOnceWith(fakeBookingList)).to.be.true;
+    });
+  
+    it('should return an empty array if there are no bookings for the user', async () => {
+      fetchListBookingOfUserStub.resolves([]);
+  
+      const req = { params: { id: 'userId456' } };
+      const res = {
+        status: sinon.stub().returnsThis(),
+        json: sinon.stub(),
+      };
+  
+      await bookingController.getListBookingOfUser(req, res);
+  
+      expect(fetchListBookingOfUserStub.calledOnceWith('userId456')).to.be.true;
+      expect(res.status.calledOnceWith(404)).to.be.true;
+      expect(res.json.calledOnceWith('Not Found')).to.be.true;
+    });
+  });
   
   
 })
