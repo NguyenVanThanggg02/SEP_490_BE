@@ -9,6 +9,7 @@ import reasonsDao from "./reasons.js";
 import messageDao from "./message.js";
 import communityStandardsDao from "./communityStandards.js";
 import notificationDao from "./notification.js"
+import BookingDAO from "./Booking.js"
 
 export {
   userDao,
@@ -21,5 +22,6 @@ export {
   reasonsDao,
   messageDao,
   communityStandardsDao,
-  notificationDao
+  notificationDao,
+  BookingDAO
 };
