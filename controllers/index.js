@@ -21,5 +21,5 @@ export {
   reasonsController,
   sendEmailBookingCompleted,
   messageController,
-  communityStandardsController
+  communityStandardsController,
 };

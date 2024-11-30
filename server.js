@@ -22,7 +22,8 @@ import {
   chatRouter,
   messRouter,
   communityStandardsRouter,
-  notificationsRouter
+  notificationsRouter,
+  systemRouter,
 } from "./routes/index.js";
 import { Server } from "socket.io"; // Import socket.io
 import { createServer } from "http"; // Import createServer cho việc khởi tạo HTTP server
@@ -58,11 +59,12 @@ app.use("/userNeed", userNeedRouter);
 app.use("/chat", chatRouter);
 app.use("/message", messRouter);
 app.use("/communityStandards", communityStandardsRouter);
-app.use("/notification", notificationsRouter)
-app.use("/transaction", transactionRouter)
-app.use("/dashboard", dashboardRouter)
+app.use("/notification", notificationsRouter);
+app.use("/transaction", transactionRouter);
+app.use("/dashboard", dashboardRouter);
+app.use("/system", systemRouter);
 
-app.get("/transaction", (req,res) => {
+app.get("/transaction", (req, res) => {
   const partnerCode = "MOMO";
   const accessKey = "F8BBA842ECF85";
   const secretkey = "K951B6PE1waDMi640xX08PD3vg6EkVlz";
@@ -80,41 +82,43 @@ app.get("/transaction", (req,res) => {
   console.log("RAW SIGNATURE:", rawSignature);
 
   // Generate the HMAC SHA256 signature
-  const signature = crypto.createHmac('sha256', secretkey)
-      .update(rawSignature)
-      .digest('hex');
+  const signature = crypto
+    .createHmac("sha256", secretkey)
+    .update(rawSignature)
+    .digest("hex");
   console.log("SIGNATURE:", signature);
 
   // Create the request payload
   const requestBody = JSON.stringify({
-      partnerCode: partnerCode,
-      accessKey: accessKey,
-      requestId: requestId,
-      amount: amount,
-      orderId: orderId,
-      orderInfo: orderInfo,
-      redirectUrl: redirectUrl,
-      ipnUrl: ipnUrl,
-      extraData: extraData,
-      requestType: requestType,
-      signature: signature,
-      lang: 'en'
+    partnerCode: partnerCode,
+    accessKey: accessKey,
+    requestId: requestId,
+    amount: amount,
+    orderId: orderId,
+    orderInfo: orderInfo,
+    redirectUrl: redirectUrl,
+    ipnUrl: ipnUrl,
+    extraData: extraData,
+    requestType: requestType,
+    signature: signature,
+    lang: "en",
   });
 
-  axios.post('https://test-payment.momo.vn/v2/gateway/api/create', requestBody, {
-    headers: {
-        'Content-Type': 'application/json'
-    }
-})
-.then(response => {
-    console.log(`Status: ${response.status}`);
-    console.log('Body:', response.data);
-    console.log('payUrl:', response.data.payUrl); // Access the payUrl in the response
-})
-.catch(error => {
-    console.error(`Problem with request: ${error.message}`);
+  axios
+    .post("https://test-payment.momo.vn/v2/gateway/api/create", requestBody, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+    .then((response) => {
+      console.log(`Status: ${response.status}`);
+      console.log("Body:", response.data);
+      console.log("payUrl:", response.data.payUrl); // Access the payUrl in the response
+    })
+    .catch((error) => {
+      console.error(`Problem with request: ${error.message}`);
+    });
 });
-})
 
 // Middleware để xử lý CORS headers
 app.use((req, res, next) => {
@@ -201,10 +205,9 @@ server.listen(Port, async () => {
   }
 });
 
-cron.schedule("* * * * *", refundOwnerSpace.plusHour)
+cron.schedule("* * * * *", refundOwnerSpace.plusHour);
 
-
-cron.schedule("* * * * *", refundOwnerSpace.plusDay)
+cron.schedule("* * * * *", refundOwnerSpace.plusDay);
 
 cron.schedule("0 0 * * 3", refundOwnerSpace.plusWeek);
 
