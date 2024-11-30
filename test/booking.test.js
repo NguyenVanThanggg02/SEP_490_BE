@@ -99,6 +99,103 @@ describe("checkHourAvailability", () => {
       
   });
 
+  describe("checkDayAvailability", () => {
+    let req, res, sandbox;
+  
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+  
+      // Mock request and response objects
+      req = {
+        body: {
+          spaceId: "test-space-id",
+          dates: ["2024-12-01", "2024-12-02", "2024-12-03"],
+        },
+      };
+  
+      res = {
+        status: sandbox.stub().returnsThis(),
+        json: sandbox.stub(),
+      };
+    });
+  
+    afterEach(() => {
+      sandbox.restore();
+    });
+  
+    it("should return all days as available when there are no bookings", async () => {
+      sandbox.stub(BookingDAO, "getBookingsBySpaceAndDates").resolves([]);
+  
+      await bookingController.checkDayAvailability(req, res);
+  
+      expect(res.status.calledWith(200)).to.be.true;
+      expect(res.json.calledOnce).to.be.true;
+  
+      const expectedResponse = {
+        availableSlots: [
+          { date: "Sun Dec 01 2024", isAvailable: true },
+          { date: "Mon Dec 02 2024", isAvailable: true },
+          { date: "Tue Dec 03 2024", isAvailable: true },
+        ],
+      };
+  
+      expect(res.json.calledWith(expectedResponse)).to.be.true;
+    });
+  
+    it("should return some days as unavailable when bookings exist", async () => {
+      const mockBookings = [
+        {
+          selectedSlots: [{ date: "2024-12-01" }],
+        },
+      ];
+  
+      sandbox.stub(BookingDAO, "getBookingsBySpaceAndDates").resolves(mockBookings);
+  
+      await bookingController.checkDayAvailability(req, res);
+  
+      expect(res.status.calledWith(200)).to.be.true;
+      expect(res.json.calledOnce).to.be.true;
+  
+      const expectedResponse = {
+        availableSlots: [
+          { date: "Sun Dec 01 2024", isAvailable: false },
+          { date: "Mon Dec 02 2024", isAvailable: true },
+          { date: "Tue Dec 03 2024", isAvailable: true },
+        ],
+      };
+  
+      expect(res.json.calledWith(expectedResponse)).to.be.true;
+    });
+  
+    it("should handle invalid date formats in the request", async () => {
+      req.body.dates = ["invalid-date", "2024-12-02"];
+  
+      await bookingController.checkDayAvailability(req, res);
+  
+      expect(res.status.calledWith(500)).to.be.true;
+      expect(
+        res.json.calledWithMatch({
+          message: sinon.match("Invalid date format"),
+        })
+      ).to.be.true;
+    });
+  
+    it("should handle errors from the DAO layer gracefully", async () => {
+      sandbox.stub(BookingDAO, "getBookingsBySpaceAndDates").throws(new Error("Database error"));
+  
+      await bookingController.checkDayAvailability(req, res);
+  
+      expect(res.status.calledWith(500)).to.be.true;
+      expect(
+        res.json.calledWithMatch({
+          message: sinon.match("Database error"),
+        })
+      ).to.be.true;
+    });
+  });
+
+  
+  
   
 })
   
