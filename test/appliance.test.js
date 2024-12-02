@@ -249,6 +249,103 @@ describe("Appliance Controller Tests", () => {
       expect(res.status.calledWith(201)).to.be.true;
       expect(res.json.calledWith({ success: true, appliance: mockSavedAppliance })).to.be.true;
     });
+    it("should create a new appliance with an empty name if name is missing", async () => {
+      const mockApplianceData = {
+        appliances: ["Cooling", "Freezer"],
+        categoryId: "123",
+      };
+    
+      const mockSavedAppliance = {
+        id: "1",
+        name: "",
+        appliances: ["Cooling", "Freezer"],
+        categoryId: "123",
+      };
+    
+      req.body = mockApplianceData;
+    
+      sandbox.stub(appliancesDao, "addAppliance").resolves(mockSavedAppliance);
+    
+      await appliancesController.createAppliance(req, res);
+    
+      expect(res.status.calledWith(201)).to.be.true;
+      expect(
+        res.json.calledWith({ success: true, appliance: mockSavedAppliance })
+      ).to.be.true;
+    });
+    it("should create a new appliance with an empty name if name is an empty string", async () => {
+      const mockApplianceData = {
+        name: "",
+        appliances: ["Cooling", "Freezer"],
+        categoryId: "123",
+      };
+    
+      const mockSavedAppliance = {
+        id: "1",
+        name: "",
+        appliances: ["Cooling", "Freezer"],
+        categoryId: "123",
+      };
+    
+      req.body = mockApplianceData;
+    
+      sandbox.stub(appliancesDao, "addAppliance").resolves(mockSavedAppliance);
+    
+      await appliancesController.createAppliance(req, res);
+    
+      expect(res.status.calledWith(201)).to.be.true;
+      expect(
+        res.json.calledWith({ success: true, appliance: mockSavedAppliance })
+      ).to.be.true;
+    });
+        
+    
+    
+    it("should return status 400 if categoryId is missing", async () => {
+      req.body = {
+        name: "Fridge",
+        appliances: ["Cooling", "Freezer"],
+        // Thiếu categoryId
+      };
+    
+      await appliancesController.createAppliance(req, res);
+    
+      expect(res.status.calledWith(400)).to.be.true;
+      expect(res.json.calledWith({ success: false, message: "categoryId cannot be empty" })).to.be.true;
+    });
+    
+    it("should return status 400 if appliances array is empty", async () => {
+      req.body = { name: "Fridge", appliances: [], categoryId: "123" };
+  
+      await appliancesController.createAppliance(req, res);
+  
+      expect(res.status.calledWith(400)).to.be.true;
+      expect(res.json.calledWith({ success: false, message: "Appliances list cannot be empty" })).to.be.true;
+    });  
+
+    it("should return status 400 if both appliances and categoryId are missing", async () => {
+      req.body = {
+        name: "Fridge", // appliances và categoryId bị thiếu
+      };
+    
+      await appliancesController.createAppliance(req, res);
+    
+      expect(res.status.calledWith(400)).to.be.true;
+      expect(
+        res.json.calledWith({
+          success: false,
+          message: "appliances and categoryId cannot be empty",
+        })
+      ).to.be.true;
+    });
+    it("should return status 400 if appliances array is empty", async () => {
+      req.body = { name: "Fridge", appliances: [], categoryId: "123" };
+  
+      await appliancesController.createAppliance(req, res);
+  
+      expect(res.status.calledWith(400)).to.be.true;
+      expect(res.json.calledWith({ success: false, message: "Appliances list cannot be empty" })).to.be.true;
+    });
   
     it("should handle errors and return status 500", async () => {
       const mockApplianceData = {
@@ -266,6 +363,24 @@ describe("Appliance Controller Tests", () => {
       expect(res.status.calledWith(500)).to.be.true;
       expect(res.json.calledWith({ success: false, message: "Error creating appliance" })).to.be.true;
     });
+
+    it("should handle duplicate appliances gracefully", async () => {
+      const mockApplianceData = {
+        name: "Fridge",
+        appliances: ["Cooling", "Freezer"],
+        categoryId: "123",
+      };
+  
+      req.body = mockApplianceData;
+  
+      sandbox.stub(appliancesDao, "addAppliance").rejects(new Error("Duplicate key error"));
+  
+      await appliancesController.createAppliance(req, res);
+  
+      expect(res.status.calledWith(409)).to.be.true; // Conflict
+      expect(res.json.calledWith({ success: false, message: "Appliance already exists" })).to.be.true;
+    });
+  
   });
   
 
