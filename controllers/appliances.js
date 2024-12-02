@@ -1,6 +1,5 @@
 import { appliancesDao } from "../dao/index.js";
 
-
 // Lấy các tiện ích có sẵn
 export const getAllAppliances = async (req, res) => {
   try {
@@ -8,28 +7,32 @@ export const getAllAppliances = async (req, res) => {
     return res.status(200).json(appliances);
   } catch (error) {
     console.error("Error fetching appliances:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 
 export const getAllAppliancesByCategories = async (req, res) => {
   try {
-    const categoryId = req.params.cateid
-    const appliances = await appliancesDao.fetchAllAppliancesCategories(categoryId);
+    const categoryId = req.params.cateid;
+    const appliances = await appliancesDao.fetchAllAppliancesCategories(
+      categoryId
+    );
     return res.status(200).json(appliances);
   } catch (error) {
     console.error("Error fetching appliances:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 
-
 // Hàm thêm appliance mới
- const createAppliance = async (req, res) => {
+const createAppliance = async (req, res) => {
   try {
     const { name, appliances, categoryId } = req.body;
 
-   
     // Tạo dữ liệu appliance mới
     const applianceData = {
       name,
@@ -42,9 +45,15 @@ export const getAllAppliancesByCategories = async (req, res) => {
 
     return res.status(201).json({ success: true, appliance: newAppliance });
   } catch (error) {
-    console.error('Error creating appliance:', error);
-    return res.status(500).json({ success: false, message: 'Error creating appliance' });
+    console.error("Error creating appliance:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Error creating appliance" });
   }
 };
 
-export default { getAllAppliances, getAllAppliancesByCategories,createAppliance };
+export default {
+  getAllAppliances,
+  getAllAppliancesByCategories,
+  createAppliance,
+};
