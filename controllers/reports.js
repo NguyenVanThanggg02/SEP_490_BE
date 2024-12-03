@@ -5,9 +5,13 @@ import Users from "../models/users.js";
 const getAllReports = async(req, res) =>{
   try {
     const allReports = await reportsDao.fetchAllReports()
+    if (!allReports) {
+      return res.status(500).json({ error: "Cannot retrieve reports" });
+    }
     res.status(200).json(allReports)
   } catch (error) {
-    throw new Error(error.message)
+    res.status(500).json({ error: error.message });
+
   }
 }
 
