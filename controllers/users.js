@@ -69,7 +69,7 @@ const forgetPass = async (req, res) => {
     try {
       const user = await userDao.forgotPass(gmail);
       if (!user) {
-        return res.send({ Status: "Không tìm thấy người dùng" });
+        return res.status(404).send({ Status: "Không thành công", Error: "Người dùng không tồn tại" });
       }
       const token = jwt.sign({ id: user._id }, "jwt_secret_key", {
         expiresIn: "1d",
@@ -90,7 +90,7 @@ const forgetPass = async (req, res) => {
         <div style="font-family: Arial, sans-serif; text-align: center;">
           <h2 style="color: #4CAF50;">Đặt lại mật khẩu</h2>
           <p>Xin chào <b>${user.fullname}</b> !!!</p>
-          <p>Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu của bạn. Nhấp vào nút bên dưới để đặt lại mật khẩu của bạn:</p>
+          <p>Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu của bạn tại SpaceHub. Nhấp vào nút bên dưới để đặt lại mật khẩu của bạn:</p>
           <a href="http://localhost:3000/reset-password/${user._id}/${token}" 
              style="display: inline-block; background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-size: 16px;">
             Đặt lại mật khẩu

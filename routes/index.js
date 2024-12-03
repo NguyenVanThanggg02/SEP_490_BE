@@ -17,6 +17,7 @@ import chatRouter from "./chat.js";
 import messRouter from "./mess.js";
 import {notificationsRouter} from "./notifications.js";
 import {transactionRouter} from "./transaction.js";
+import systemPropertiesRouter from "./SystemProperties.js";
 
 export {
   userRouter,
@@ -37,5 +38,6 @@ export {
   chatRouter,
   messRouter,
   notificationsRouter,
-  transactionRouter
+  transactionRouter,
+  systemPropertiesRouter
 };
