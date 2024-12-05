@@ -15,8 +15,6 @@ const fetchAllReports = async () => {
 };
 
 const createReports = async (reasonId, userId, spaceId, customReason) => {
-  console.log('Creating report with:', { reasonId, userId, spaceId, customReason });
-
   try {
     const createReport = await Reports.create({
       reasonId,

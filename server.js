@@ -22,7 +22,8 @@ import {
   chatRouter,
   messRouter,
   communityStandardsRouter,
-  notificationsRouter
+  notificationsRouter,
+  systemPropertiesRouter
 } from "./routes/index.js";
 import { Server } from "socket.io"; // Import socket.io
 import { createServer } from "http"; // Import createServer cho việc khởi tạo HTTP server
@@ -61,6 +62,7 @@ app.use("/communityStandards", communityStandardsRouter);
 app.use("/notification", notificationsRouter)
 app.use("/transaction", transactionRouter)
 app.use("/dashboard", dashboardRouter)
+app.use("/system", systemPropertiesRouter);
 
 app.get("/transaction", (req,res) => {
   const partnerCode = "MOMO";

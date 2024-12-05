@@ -105,11 +105,7 @@ describe('createReports', () => {
         };
 
         await reportsController.createReports(req, res);
-
-        // Logging the arguments to help debug
-        console.log(createReportsStub.getCall(0).args);
-        console.log('Response JSON called with:', res.json.getCall(0)?.args);
-
+        
         // Assertions
         expect(createReportsStub.calledOnceWith('r1', mockReport.userId.toString(), mockReport.spaceId.toString(), 'Custom Reason')).to.be.true;
         expect(res.status.calledOnceWith(200)).to.be.true;

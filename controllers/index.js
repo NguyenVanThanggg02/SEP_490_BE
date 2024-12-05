@@ -11,6 +11,7 @@ import messageController from "./message.js";
 import communityStandardsController from "./communityStandards.js";
 import notificationController from "./notificationController.js";
 import MessageController from "./MessageController.js";
+import SystemPropertiesController from "./SystemProperties.js";
 export {
   userController,
   reviewController,
@@ -24,5 +25,6 @@ export {
   messageController,
   communityStandardsController,
   notificationController,
-  MessageController
+  MessageController,
+  SystemPropertiesController
 };
