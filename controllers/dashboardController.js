@@ -302,10 +302,10 @@ export const getAllData = async (req, res) => {
     )?.count || 0;
     const waitCount = spaceCensorshipQuery.find(
       (item) => item._id === "Chờ duyệt"
-    ).count || 0;
+    )?.count || 0;
     const rejectCount = spaceCensorshipQuery.find(
       (item) => item._id === "Từ chối"
-    ).count || 0;
+    )?.count || 0;
     const spaceCensorship = {
       title: "Trạng thái phê duyệt Không gian",
       data: [
