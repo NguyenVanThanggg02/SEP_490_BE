@@ -273,7 +273,7 @@ export const getAllTransaction = async (req, res) => {
 
 export const adminGetAllTransaction = async (req, res) => {
   try {
-    const {searchParams, status, type, page = 1, limit = 10} = req.query;
+    const { searchParams, startTime, endTime, typeOfTransaction } = req.query;
     const searchQuery = {};
     if (searchParams) {
       searchQuery['$or'] = [
@@ -287,57 +287,58 @@ export const adminGetAllTransaction = async (req, res) => {
         { 'user.phone': new RegExp(searchParams, 'i') }
       ];
     }
-    // Lọc theo status, type
-    if (status) searchQuery.status = new RegExp(status, "i");
-    if (type) searchQuery.type = new RegExp(type, "i");
-    // Phân trang
-    const skip = (page - 1) * limit;
-    // Truy vấn MongoDB với phân trang và sắp xếp
+
+    if (typeOfTransaction && typeOfTransaction !== "Tất cả") {
+      searchQuery["type"] = typeOfTransaction;
+    }
+
+    if (startTime && endTime) {
+      searchQuery["createdAt"] = {
+        $gte: new Date(startTime),
+        $lte: new Date(endTime),
+      };
+    } else if (startTime) {
+      searchQuery["createdAt"] = {
+        $gte: new Date(startTime),
+      };
+    } else if (endTime) {
+      searchQuery["createdAt"] = {
+        $lte: new Date(endTime),
+      };
+    }
+
     const transactionList = await TransactionsModel.find(searchQuery)
       .populate({
-        path: 'userId',
+        path: "userId",
         select: 'avatar fullname gmail phone'  // Only select these fields from the User model
-      }).sort({
+      })
+      .sort({
         createdAt: -1,
       })
-      .skip(skip)
-      .limit(parseInt(limit))
       .exec();
-    // Nếu không tìm thấy giao dịch nào
-    if (transactionList.length === 0) {
-      return res.status(404).json({ message: "No transactions found" });
-    }
-    // Tính toán tổng số giao dịch (dùng countDocuments để lấy tổng)
-    const totalTransactions = await TransactionsModel.countDocuments(
-      searchQuery
-    );
-    // Định dạng dữ liệu trả về
-    const dataRes = transactionList.map((transaction) => ({
-      transactionId: transaction._id.toString(),
-      userInfoAvatar: [transaction.userId.avatar].join("\n"),
-      userInfo: [transaction.userId.fullname, transaction.userId.gmail, transaction.userId.phone].join("\n"),
-      orderId: transaction.orderId,
-      amount: transaction.amount,
-      deductedAmount: transaction.deductedAmount,
-      description: transaction.description,
-      type: transaction.type,
-      status: transaction.status,
-      createdAt: transaction.createdAt.toLocaleString(),
-    }));
-    // Tính toán số trang
-    const totalPages = Math.ceil(totalTransactions / limit);
-    // Trả về kết quả
-    res.status(200).json({
-      currentPage: parseInt(page),
-      totalPages,
-      totalTransactions,
-      transactionList: dataRes,
+    const dataRes = transactionList.map((transaction) => {
+      return {
+        transactionId: transaction._id.toString(),
+        userInfo: [
+          transaction.userId.fullname,
+          transaction.userId.gmail,
+          transaction.userId.phone,
+        ].join("\n"),
+        orderId: transaction.orderId,
+        amount: transaction.amount,
+        description: transaction.description,
+        type: transaction.type,
+        status: transaction.status,
+        createdAt: transaction.createdAt.toLocaleString(),
+      };
     });
+    res.status(200).json({ transactionList: dataRes });
   } catch (error) {
-    console.error(error);
-    res.status(400).json({ message: "Bad request", error: error.message });
+    console.log(error);
+    res.status(400).json({ message: "bad request" });
   }
 };
+
 
 export const adminConfirmTransaction = async (req, res) => {
   try {
