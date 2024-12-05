@@ -14,6 +14,15 @@ const fetchAllReports = async () => {
   }
 };
 
+const findReportByUserAndSpace = async (userId, spaceId) => {
+  try {
+    return await Reports.findOne({ userId, spaceId }).lean();
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
 const createReports = async (reasonId, userId, spaceId, customReason) => {
   try {
     const createReport = await Reports.create({
@@ -33,4 +42,4 @@ const createReports = async (reasonId, userId, spaceId, customReason) => {
   }
 };
 
-export default { createReports, fetchAllReports };
+export default { createReports, fetchAllReports,findReportByUserAndSpace };

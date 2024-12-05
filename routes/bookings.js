@@ -36,7 +36,9 @@ bookingRouter.post('/check-day-availability', BookingController.checkDayAvailabi
 // Endpoint để tạo đặt phòng mới
 bookingRouter.post('/create', BookingController.createBooking);
 bookingRouter.get("/bookingByUserId/:id", BookingController.getListBookingOfUser);
-
+// Hủy lịch
+bookingRouter.post("/cancel-booking", BookingController.cancelBooking);
+bookingRouter.post("/cancel-booking-precheck", BookingController.cancelBookingPrecheck);
 
 
 // Cập nhật trạng thái booking và lý do nếu chuyển thành 'cancel' api cho user
@@ -222,78 +224,6 @@ bookingRouter.put("/updateBookStatus/:id", async (req, res, next) => {
   }
 });
 
-// huỷ lịch book
-bookingRouter.put("/:id/cancel", async (req, res) => {
-  try {
-    const booking = await Bookings.findById(req.params.id)
-      .populate("userId")
-      .populate("spaceId");
-
-    if (!booking) {
-      return res.status(404).json({ message: "Không tìm thấy booking" });
-    }
-
-    // Kiểm tra nếu trạng thái hoặc trạng thái phê duyệt của chủ sở hữu ngừng hủy
-    if (
-      // booking.ownerApprovalStatus === "declined" ||
-      booking.status === "canceled"
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Không thể hủy booking ở trạng thái này" });
-    }
-
-    // Kiểm tra theo rentalType
-    const currentDate = new Date();
-    const startDate = new Date(booking.startDate); // Lấy thời gian bắt đầu của booking
-    const timeDifference = startDate - currentDate; // Tính sự chênh lệch thời gian
-
-    if (["hour", "day"].includes(booking.rentalType)) {
-      // Nếu rentalType là "hour" hoặc "day", hủy trước 24 giờ
-      if (timeDifference < 24 * 60 * 60 * 1000) { // 24 giờ tính bằng mili giây
-        return res.status(400).json({ message: "Không thể hủy khi còn dưới 24 giờ" });
-      }
-    }  
-    // else if (booking.rentalType === "week") {
-    //   const currentDate = new Date();
-    //   const startDate = new Date(booking.startDate);
-    //   const timeDifference = startDate - currentDate; // Tính sự chênh lệch thời gian
-    
-    //   // Kiểm tra nếu chưa sử dụng ngày nào (chưa đến ngày bắt đầu)
-    //   if (timeDifference > 0) {
-    //     // Chưa đến ngày bắt đầu, có thể hủy booking
-    //     return res.json({ message: "Booking có thể hủy" });
-    //   }
-    
-    //   // Kiểm tra nếu đã sử dụng hơn 3 ngày
-    //   if (Math.abs(timeDifference) > 3 * 24 * 60 * 60 * 1000) { // Đã sử dụng hơn 3 ngày
-    //     return res.status(400).json({ message: "Không thể hủy booking khi đã sử dụng hơn 3 ngày" });
-    //   }
-    // }
-    
-    
-    else if (booking.rentalType === "month") {
-       const timeUsed = timeDifference / (1000 * 60 * 60 * 24); 
-       // Kiểm tra nếu đã sử dụng quá 2 tuần (14 ngày)
-        if (timeUsed > 14) {
-          return res.status(400).json({ message: "Không thể hủy khi đã sử dụng quá 2 tuần" });
-        }
-    }
-
-    // Tiến hành hủy booking
-    booking.status = "canceled";
-    booking.cancelReason = req.body.cancelReason; // Chọn lý do hủy
-    booking.totalAmount = 0; // Đặt lại tổng số tiền
-    await booking.save();
-
-    return res.json({ message: "Booking đã được hủy thành công" });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Lỗi khi hủy booking" });
-  }
-});
-
-
 // lấy các đơn book của người cho thuê
 bookingRouter.get("/spaces/:userId", async (req, res, next) => {
   try {
@@ -303,7 +233,7 @@ bookingRouter.get("/spaces/:userId", async (req, res, next) => {
       .populate("userId")
       .exec();
     const filteredBookings = bookings.filter(
-      (booking) => booking.spaceId.userId.toString() === userId
+      (booking) => booking?.spaceId?.userId?.toString() === userId
     );
     if (filteredBookings.length === 0) {
       return res

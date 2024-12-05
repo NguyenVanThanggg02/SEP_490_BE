@@ -132,6 +132,7 @@ const createNewSpace = async (req, res) => {
       goldenHourDetails,
       favorite,
       latLng,
+      detailAddress
     } = req.body;
 
     // Kiểm tra các trường bắt buộc
@@ -185,7 +186,8 @@ const createNewSpace = async (req, res) => {
       communityStandardsId: communityStandardsId, // Gán ID cho space
       favorite,
       latLng,
-      locationPoint: {type: "Point", coordinates: latLng && latLng.length === 2 ? [latLng[1], latLng[0]] : null}
+      locationPoint: {type: "Point", coordinates: latLng && latLng.length === 2 ? [latLng[1], latLng[0]] : null},
+      detailAddress
     };
     const newSpace = await Spaces.create(spaceData); // Tạo không đồng bộ
     const adminList = await Users.find({ role: 1 });
@@ -224,7 +226,8 @@ const updateSpace = async (req, res) => {
       appliancesId,
       isGoldenHour,
       goldenHourDetails,
-      userId 
+      userId ,
+      detailAddress
     } = req.body;
 
     console.log("Received userId:", userId); 
@@ -261,6 +264,7 @@ const updateSpace = async (req, res) => {
       isGoldenHour,
       goldenHourDetails,
       censorship: "Chờ duyệt",
+      detailAddress
     };
 
     const updatedRules = await Rules.findByIdAndUpdate(rulesId._id, { ...rulesId }).lean();
@@ -571,7 +575,33 @@ const getBookingDetailsSpaces = async (req, res) => {
     });
   }
 };
+const getBookingDetailsSpace = async (req, res) => {
+  const spaceId = req.params.spaceId;
 
+  if (!spaceId)
+    return res.status(404).json({
+      message: "All field is required",
+    });
+  try {
+    const space = await Spaces.findById(spaceId).lean();
+    const currentDate = new Date();
+    const datePart = currentDate.toISOString().split("T")[0];
+    const currentDateSetTo0h = new Date(`${datePart}T00:00:00.000Z`);
+    const bookings = await Bookings.find(
+      // booking not checkout yet
+      { spaceId, endDate: { $gte: currentDateSetTo0h } }
+    ).lean();
+
+    res.json({
+      message: "Get space with booking info successfully",
+      data: { ...space, bookings },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Get space with booking info failed",
+    });
+  }
+};
 // const getBookingDetailsSpaces = async (req, res) => {
 //   const userId = req.params.userId;
 //   const { month, year } = req.query;
@@ -656,5 +686,6 @@ export default {
   updateSpace,
   getProposedSpaces,
   getBookingDetailsSpaces,
+  getBookingDetailsSpace,
   getFilteredSpaces
 }

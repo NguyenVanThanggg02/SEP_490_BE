@@ -22,13 +22,15 @@ import {
   chatRouter,
   messRouter,
   communityStandardsRouter,
-  notificationsRouter
+  notificationsRouter,
+  systemPropertiesRouter
 } from "./routes/index.js";
 import { Server } from "socket.io"; // Import socket.io
 import { createServer } from "http"; // Import createServer cho việc khởi tạo HTTP server
 import { initSocket } from "./helpers/socket.io.js";
 import { transactionRouter } from "./routes/transaction.js";
 import { refundOwnerSpace } from "./job/RefundOwnerSpace.js";
+import { dashboardRouter } from "./routes/dashboard.js";
 
 dotenv.config();
 
@@ -59,6 +61,8 @@ app.use("/message", messRouter);
 app.use("/communityStandards", communityStandardsRouter);
 app.use("/notification", notificationsRouter)
 app.use("/transaction", transactionRouter)
+app.use("/dashboard", dashboardRouter)
+app.use("/system", systemPropertiesRouter);
 
 app.get("/transaction", (req,res) => {
   const partnerCode = "MOMO";

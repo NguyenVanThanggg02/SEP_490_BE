@@ -14,6 +14,13 @@ const getAllReports = async(req, res) =>{
 const createReports = async (req, res) => {
   try {
     const { reasonId, userId, spaceId, customReason, } = req.body;
+    
+     // Kiểm tra xem người dùng đã báo cáo không gian này chưa
+     const existingReport = await reportsDao.findReportByUserAndSpace(userId, spaceId);
+     if (existingReport) {
+       return res.status(400).json({ message: "Bạn đã báo cáo không gian này trước đó rồi." });
+     }
+
     const report = await reportsDao.createReports(reasonId, userId, spaceId, customReason,);
 
     const space = await Spaces.findById(spaceId);

@@ -11,6 +11,9 @@ const transactionSchema = new Schema(
       type: Number,
       required: true,
     },
+    deductedAmount:{
+      type: Number,
+    },
     description: {
       type: String,
       required: true,

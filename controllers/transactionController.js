@@ -42,6 +42,7 @@ export const transactionCreate = async (req, res) => {
       res.status(200).json(data);
       return;
     } else if (type === "Rút tiền") {
+      const deductedAmount = amount * 0.95;
       if (!user.balanceAmount || user.balanceAmount < Number(amount) || !beneficiaryAccountNumber || !beneficiaryBankCode) {
         res
           .status(400)
@@ -55,6 +56,7 @@ export const transactionCreate = async (req, res) => {
       await transactionDao.save({
         userId,
         amount,
+        deductedAmount, 
         description: `${user.fullname} rút tiền từ tài khoản`,
         orderId: "SYSTEM" + new Date().getTime(),
         type,
@@ -249,6 +251,7 @@ export const getAllTransaction = async (req, res) => {
       return {
         transactionId: transaction._id.toString(),
         amount: transaction.amount,
+        deductedAmount: transaction.deductedAmount,
         description: transaction.description,
         type: transaction.type,
         status: transaction.status,
@@ -270,31 +273,58 @@ export const getAllTransaction = async (req, res) => {
 
 export const adminGetAllTransaction = async (req, res) => {
   try {
-    const { searchParams } = req.query;
+    const { searchParams, startTime, endTime, typeOfTransaction } = req.query;
     const searchQuery = {};
     if (searchParams) {
       searchQuery['$or'] = [
         { orderId: new RegExp(searchParams, 'i') }, 
         { description: new RegExp(searchParams, 'i') }, 
+        { status: new RegExp(searchParams, 'i') }, 
+        { type: new RegExp(searchParams, 'i') }, 
         { 'userId.avatar': new RegExp(searchParams, 'i') },
         { 'userId.fullname': new RegExp(searchParams, 'i') },
         { 'userId.gmail': new RegExp(searchParams, 'i') },
         { 'user.phone': new RegExp(searchParams, 'i') }
       ];
     }
+
+    if (typeOfTransaction && typeOfTransaction !== "Tất cả") {
+      searchQuery["type"] = typeOfTransaction;
+    }
+
+    if (startTime && endTime) {
+      searchQuery["createdAt"] = {
+        $gte: new Date(startTime),
+        $lte: new Date(endTime),
+      };
+    } else if (startTime) {
+      searchQuery["createdAt"] = {
+        $gte: new Date(startTime),
+      };
+    } else if (endTime) {
+      searchQuery["createdAt"] = {
+        $lte: new Date(endTime),
+      };
+    }
+
     const transactionList = await TransactionsModel.find(searchQuery)
-    .populate({
-      path: 'userId',
-      select: 'avatar fullname gmail phone'  // Only select these fields from the User model
-    }).sort({
-      createdAt: -1,
-    })
-    .exec();
+      .populate({
+        path: "userId",
+        select: 'avatar fullname gmail phone'  // Only select these fields from the User model
+      })
+      .sort({
+        createdAt: -1,
+      })
+      .exec();
     const dataRes = transactionList.map((transaction) => {
       return {
         transactionId: transaction._id.toString(),
         userInfoAvatar: [transaction.userId.avatar].join("\n"),
-        userInfo: [transaction.userId.fullname, transaction.userId.gmail, transaction.userId.phone].join("\n"),
+        userInfo: [
+          transaction.userId.fullname,
+          transaction.userId.gmail,
+          transaction.userId.phone,
+        ].join("\n"),
         orderId: transaction.orderId,
         amount: transaction.amount,
         description: transaction.description,
@@ -303,14 +333,13 @@ export const adminGetAllTransaction = async (req, res) => {
         createdAt: transaction.createdAt.toLocaleString(),
       };
     });
-    res
-      .status(200)
-      .json({ transactionList: dataRes });
+    res.status(200).json({ transactionList: dataRes });
   } catch (error) {
     console.log(error);
     res.status(400).json({ message: "bad request" });
   }
 };
+
 
 export const adminConfirmTransaction = async (req, res) => {
   try {
@@ -324,12 +353,16 @@ export const adminConfirmTransaction = async (req, res) => {
     }
     
     if (result === "Đồng ý - Khởi tạo") {
+      console.log('Số tiền gốc: ', transaction.amount); 
+      const deductedAmount = transaction.amount * 0.95; 
+      console.log('Số tiền đã giảm: ', deductedAmount); 
+
       if (transaction.beneficiaryBankCode === "MOMO") {
         res.status(200).json({ 
           transactionId,
           beneficiaryBankCode: transaction.beneficiaryBankCode, 
           beneficiaryAccountNumber: transaction.beneficiaryAccountNumber,
-          amount: transaction.amount,
+          amount: deductedAmount, // Dùng số tiền đã giảm
           qrUrl: "https://test-payment.momo.vn/payment-platform/images/qr-code-download-app.png"
         });
         return;
@@ -338,14 +371,17 @@ export const adminConfirmTransaction = async (req, res) => {
           transactionId,
           beneficiaryBankCode: transaction.beneficiaryBankCode, 
           beneficiaryAccountNumber: transaction.beneficiaryAccountNumber,
-          amount: transaction.amount,
-          qrUrl: `https://img.vietqr.io/image/${transaction.beneficiaryBankCode}-${transaction.beneficiaryAccountNumber}-compact2.jpg?amount=${transaction.amount}&addInfo=${transaction.description}&accountName=${transaction.userId.fullname}`});
+          amount: deductedAmount, // Dùng số tiền đã giảm
+          qrUrl: `https://img.vietqr.io/image/${transaction.beneficiaryBankCode}-${transaction.beneficiaryAccountNumber}-compact2.jpg?amount=${deductedAmount}&addInfo=${transaction.description}&accountName=${transaction.userId.fullname}`
+        });
         return;
       }
     }
+    
 
     if (result === "Đồng ý - Xác nhận") {
-      await TransactionsModel.updateOne({_id: transactionId}, {status: "Thành công"})
+      const deductedAmount = transaction.amount * 0.95;
+      await TransactionsModel.updateOne({_id: transactionId}, {status: "Thành công",deductedAmount})
       await notificationDao.saveAndSendNotification(
         transaction.userId._id.toString(),
         "Yêu cầu rút tiền của bạn đã được phê duyệt.",

@@ -32,7 +32,7 @@ spaceRouter.delete('/delete/:id', spaceController.deleteSpace);
 spaceRouter.put('/update-censorship/:id', spaceController.updateSpaceCensorshipAndCommunityStandards);
 spaceRouter.get("/proposed/:userId", spaceController.getProposedSpaces);
 spaceRouter.get("/statistic/:userId", spaceController.getBookingDetailsSpaces);
-
+spaceRouter.get("/with-bookings/:spaceId",spaceController.getBookingDetailsSpace);
 
 // tim kiem space
 spaceRouter.get("/search/:name", async (req, res, next) => {

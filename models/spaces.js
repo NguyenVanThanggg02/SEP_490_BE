@@ -133,6 +133,9 @@ const spacesSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    detailAddress:{
+      type: String,
+    }
   },
   {
     timestamps: true,

@@ -69,8 +69,8 @@ async function transferMoneyBooking(userId, type, status, amount, description, o
         amount: amount,
         originalTransactionId
       });
-      await transactionsModel.save();
-      return {status: "success", message:"Thành công"}
+      const transaction = await transactionsModel.save();
+      return {status: "success", message:"Thành công", transaction}
     }
     return {status: "failed", message:"Lỗi giao dịch"}
   } catch (error) {
