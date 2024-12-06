@@ -319,6 +319,7 @@ export const adminGetAllTransaction = async (req, res) => {
     const dataRes = transactionList.map((transaction) => {
       return {
         transactionId: transaction._id.toString(),
+        userInfoAvatar: [transaction.userId.avatar].join("\n"),
         userInfo: [
           transaction.userId.fullname,
           transaction.userId.gmail,

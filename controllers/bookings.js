@@ -37,9 +37,9 @@ export const createBooking = async (req, res) => {
 
     const user = await Users.findById(userId);
     // Kiểm tra các trường dữ liệu trước khi lưu
-    if (!userId || !spaceId || !startDate || !endDate || !selectedSlots || !selectedDates) {
-      return res.status(400).json({ message: "Missing required fields." });
-    }
+    // if (!userId || !spaceId || !startDate || !endDate || !selectedSlots || !selectedDates) {
+    //   return res.status(400).json({ message: "Missing required fields." });
+    // }
     if (Number(totalAmount) > user.balanceAmount) {
       return res.status(400).json({ message: "Số dư không đủ để thực hiện giao dịch" });
     }

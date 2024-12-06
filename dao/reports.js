@@ -5,8 +5,8 @@ const fetchAllReports = async () => {
   try {
     const allReports = await Reports.find({})
     .populate("reasonId")
-    // .populate("userId")
-    // .populate("spaceId")
+    .populate("userId")
+    .populate("spaceId")
     .exec();
     return allReports;
   } catch (error) {
