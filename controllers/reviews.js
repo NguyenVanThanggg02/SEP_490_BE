@@ -119,13 +119,6 @@ const createReview = async (req, res) => {
       return res.status(404).json({ message: "Booking space not found" });
     }
 
-    // const currDate = new Date();
-    // const checkOutDate = new Date(booking.endDate);
-    // if (currDate < checkOutDate || booking.status !== "completed") {
-    //   return res
-    //     .status(404)
-    //     .json({ message: "You must checkout before create preview" });
-    // }
     const newReview = await Reviews.create({ text, rating, spaceId, userId });
     await Spaces.findByIdAndUpdate(spaceId, {
       $push: { reviews: newReview._id },

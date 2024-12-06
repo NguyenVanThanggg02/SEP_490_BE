@@ -158,7 +158,7 @@ describe("User Controller Tests", () => {
 
       await userController.forgetPass(req, res);
 
-      expect(res.send.calledWith({ Status: "Không tìm thấy người dùng" })).to.be.true;
+      expect(res.send.calledWith({ Status: "Không thành công", Error: "Người dùng không tồn tại" })).to.be.true;
     });
   });
 

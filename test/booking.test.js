@@ -6,6 +6,10 @@ import sinon from 'sinon';
 import Bookings from "../models/bookings.js";
 import { transactionDao } from "../dao/transactionDao.js";
 import Users from "../models/users.js";
+import bookingRouter from "../routes/bookings.js";
+import express from "express";
+import request from "supertest";
+
 describe("Booking Test", () => {
 
 describe("checkHourAvailability", () => {
@@ -303,7 +307,181 @@ describe("checkHourAvailability", () => {
       expect(res.json.calledOnceWith('Not Found')).to.be.true;
     });
   });
+  const app = express();
+app.use(express.json());
+app.use("/bookings", bookingRouter);
+  describe("GET /bookings", () => {
+    let findStub;
   
+    beforeEach(() => {
+      // Mock phương thức find của Mongoose
+      findStub = sinon.stub(Bookings, "find");
+    });
+  
+    afterEach(() => {
+      // Khôi phục lại các stub sau mỗi test case
+      sinon.restore();
+    });
+  
+    it("should return all bookings with populated fields", async () => {
+      // Dữ liệu giả lập để trả về
+      const mockBookings = [
+        {
+          _id: "booking1",
+          spaceId: { _id: "space1", name: "Space A" },
+          userId: { _id: "user1", name: "User A" },
+        },
+        {
+          _id: "booking2",
+          spaceId: { _id: "space2", name: "Space B" },
+          userId: { _id: "user2", name: "User B" },
+        },
+      ];
+  
+      // Giả lập find() trả về mockBookings
+      findStub.returns({
+        populate: sinon.stub().returnsThis(),
+        exec: sinon.stub().resolves(mockBookings),
+      });
+  
+      const res = await request(app).get("/bookings");
+  
+      expect(res.status).to.equal(200); // Kiểm tra mã trạng thái HTTP
+      expect(res.body).to.be.an("array").that.has.lengthOf(2);
+      expect(res.body[0]).to.have.property("spaceId").that.has.property("name", "Space A");
+      expect(res.body[0]).to.have.property("userId").that.has.property("name", "User A");
+    });
+  
+    it("should return 404 if no bookings are found", async () => {
+      // Giả lập find() trả về mảng rỗng
+      findStub.returns({
+        populate: sinon.stub().returnsThis(),
+        exec: sinon.stub().resolves([]),
+      });
+  
+      const res = await request(app).get("/bookings");
+  
+      expect(res.status).to.equal(404); // Kiểm tra mã trạng thái HTTP
+      expect(res.body).to.have.property("message", "Không tìm thấy dịch vụ");
+    });
+  
+    it("should return 500 if there is a server error", async () => {
+      // Giả lập lỗi khi gọi find()
+      findStub.throws(new Error("Lỗi server"));
+  
+      const res = await request(app).get("/bookings");
+  
+      expect(res.status).to.equal(500); // Kiểm tra mã trạng thái HTTP
+      expect(res.body).to.have.property("message", "Lỗi server");
+    });
+  });
+  
+
+  describe("PUT /update-status/:id", () => {
+    let findByIdAndUpdateStub, transactionStub;
+  
+    beforeEach(() => {
+      // Mock phương thức findByIdAndUpdate của Mongoose và transactionDao
+      findByIdAndUpdateStub = sinon.stub(Bookings, "findByIdAndUpdate");
+      transactionStub = sinon.stub(transactionDao, "transferMoneyBooking");
+    });
+  
+    afterEach(() => {
+      // Khôi phục lại các stub sau mỗi test case
+      sinon.restore();
+    });
+  
+    it("Cập nhật trạng thái booking thành 'completed' và xử lý giao dịch", async () => {
+      const mockBooking = {
+        _id: "mockBookingId",
+        status: "pending",
+        userId: { _id: "mockUserId", gmail: "tenant@example.com" },
+        spaceId: { name: "Mock Space" },
+        totalAmount: 100,
+      };
+  
+      // Giả lập findByIdAndUpdate trả về booking đã cập nhật
+      findByIdAndUpdateStub.resolves({ ...mockBooking, status: "completed" });
+  
+      // Giả lập transactionDao xử lý thành công
+      transactionStub.resolves("Transaction Success");
+  
+      const res = await request(app)
+        .put("/update-status/mockBookingId")
+        .send({ status: "completed" });
+  
+      expect(res.status).to.equal(200);
+      expect(res.body.status).to.equal("completed");
+      expect(transactionStub.calledOnce).to.be.true;
+      expect(
+        transactionStub.calledWith(
+          mockBooking.userId._id.toString(),
+          "Hoàn tiền",
+          "Thành công",
+          mockBooking.totalAmount,
+          `Hoàn tiền ${mockBooking.spaceId.name}`
+        )
+      ).to.be.true;
+    });
+  
+    it("Trả về 400 nếu trạng thái không hợp lệ", async () => {
+      const res = await request(app)
+        .put("/update-status/mockBookingId")
+        .send({ status: "invalid_status" });
+  
+      expect(res.status).to.equal(400);
+      expect(res.body.message).to.equal("Invalid status value");
+    });
+  
+    it("Trả về 404 nếu không tìm thấy booking", async () => {
+      // Giả lập findByIdAndUpdate trả về null
+      findByIdAndUpdateStub.resolves(null);
+  
+      const res = await request(app)
+        .put("/update-status/mockBookingId")
+        .send({ status: "completed" });
+  
+      expect(res.status).to.equal(404);
+      expect(res.body.message).to.equal("Không tìm thấy booking");
+    });
+  
+    it("Cập nhật trạng thái thành 'canceled' với lý do hủy", async () => {
+      const mockBooking = {
+        _id: "mockBookingId",
+        status: "pending",
+        cancelReason: null,
+        userId: { _id: "mockUserId" },
+        spaceId: { name: "Mock Space" },
+      };
+  
+      // Giả lập findByIdAndUpdate trả về booking đã cập nhật
+      findByIdAndUpdateStub.resolves({
+        ...mockBooking,
+        status: "canceled",
+        cancelReason: "Reason for cancellation",
+      });
+  
+      const res = await request(app)
+        .put("/update-status/mockBookingId")
+        .send({ status: "canceled", cancelReason: "Reason for cancellation" });
+  
+      expect(res.status).to.equal(200);
+      expect(res.body.status).to.equal("canceled");
+      expect(res.body.cancelReason).to.equal("Reason for cancellation");
+    });
+  
+    it("Trả về 500 nếu có lỗi server", async () => {
+      // Giả lập lỗi khi gọi findByIdAndUpdate
+      findByIdAndUpdateStub.throws(new Error("Lỗi server"));
+  
+      const res = await request(app)
+        .put("/update-status/mockBookingId")
+        .send({ status: "completed" });
+  
+      expect(res.status).to.equal(500);
+      expect(res.body).to.have.property("message", "Lỗi server");
+    });
+  });
   
 })
   
