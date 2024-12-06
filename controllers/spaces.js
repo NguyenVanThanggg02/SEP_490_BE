@@ -1,4 +1,4 @@
-import { spaceDao,appliancesDao } from "../dao/index.js";
+import { spaceDao, appliancesDao } from "../dao/index.js";
 import Spaces from "../models/spaces.js";
 const getAllSpaces = async (req, res) => {
   try {
@@ -21,17 +21,18 @@ const getAllSpaceFavorites = async (req, res) => {
 
 const getSimilarSpaces = async (req, res) => {
   try {
-    const similarSpaces = req.params.id
-    const spaces = await spaceDao.fetchSimilarSpaces(similarSpaces)
+    const { id } = req.params;
+    const spaces = await spaceDao.fetchSimilarSpaces(id);
+
     if (spaces) {
-      res.status(200).json(spaces)
-    } else {
-      res.status(400).json({ message: 'not found' })
+      return res.status(200).json(spaces);
     }
+
+    res.status(400).json({ message: "not found" });
   } catch (error) {
-    res.status(500).json({ message: error.toString() })
+    res.status(500).json({ message: error.message });
   }
-}
+};
 
 // Tạo mới một không gian
 export const createNewSpace = async (req, res) => {
@@ -107,4 +108,4 @@ const changeFavoriteStatus = async (req, res) => {
 };
 
 
-export default { getAllSpaces, getSimilarSpaces,createNewSpace,changeFavoriteStatus,getAllSpaceFavorites }
+export default { getAllSpaces, getSimilarSpaces, createNewSpace, changeFavoriteStatus, getAllSpaceFavorites }
