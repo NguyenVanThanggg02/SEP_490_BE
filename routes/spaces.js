@@ -1,19 +1,11 @@
 import { spaceController } from "../controllers/index.js";
 import express from "express";
-
 import Spaces from "../models/spaces.js";
 import createError from "http-errors";
-import {
-  signAccessToken,
-  signRefreshToken,
-  verifyRefreshToken,
-  verifyAccessToken,
-} from "../helpers/jwt_helper.js";
-import Users from "../models/users.js";
-import Appliances from "../models/appliances.js";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../cloudinary.config.js";
+import { notificationDao } from "../dao/index.js";
 
 
 
@@ -35,10 +27,12 @@ spaceRouter.put("/:id/favorite", spaceController.changeFavoriteStatus);
 spaceRouter.get("/favorite", spaceController.getAllSpaceFavorites);
 spaceRouter.post('/', spaceController.createNewSpace);
 spaceRouter.post('/uploadImages', uploadCloud.array('images', 10), spaceController.uploadImages);
-
 spaceRouter.post('/removeImage', spaceController.removeImages);
-
-
+spaceRouter.delete('/delete/:id', spaceController.deleteSpace);
+spaceRouter.put('/update-censorship/:id', spaceController.updateSpaceCensorshipAndCommunityStandards);
+spaceRouter.get("/proposed/:userId", spaceController.getProposedSpaces);
+spaceRouter.get("/statistic/:userId", spaceController.getBookingDetailsSpaces);
+spaceRouter.get("/with-bookings/:spaceId",spaceController.getBookingDetailsSpace);
 
 // tim kiem space
 spaceRouter.get("/search/:name", async (req, res, next) => {
@@ -56,84 +50,18 @@ spaceRouter.get("/search/:name", async (req, res, next) => {
   }
 });
 
-spaceRouter.get("/filter", async (req, res, next) => {
-  try {
-    const { location, minPrice, maxPrice, category, areaMin, areaMax, applianceNames } = req.query;
-
-    // Khởi tạo đối tượng filter rỗng
-    let filter = {};
-
-    // Lọc theo địa chỉ
-    if (location) {
-      const rgx = (pattern) => new RegExp(`.*${pattern}.*`, "i"); // Không phân biệt chữ hoa/thường
-      filter.location = { $regex: rgx(location) };
-    }
-    
-    // Lọc theo khu vực
-    if (areaMin && areaMax) {
-      filter.area = { $gte: areaMin, $lte: areaMax }; // Lọc theo khoảng giá
-    } else if (areaMin) {
-      filter.area = { $gte: areaMin }; // Lọc chỉ từ giá tối thiểu
-    } else if (areaMax) {
-      filter.area = { $lte: areaMax }; // Lọc chỉ đến giá tối đa
-    }
-
-
-    if (minPrice && maxPrice) {
-      filter.pricePerHour = { $gte: minPrice, $lte: maxPrice };
-    } else if (minPrice) {
-      filter.pricePerHour = { $gte: minPrice };
-    } else if (maxPrice) {
-      filter.pricePerHour = { $lte: maxPrice };
-    }
-
-    // Lọc theo danh mục
-    if (category) {
-      filter.categories = category; // categoriesId để lọc theo ObjectId
-    }
-
-    // Lọc theo tên thiết bị
-    if (applianceNames) {
-      const applianceNamesArray = Array.isArray(applianceNames) ? applianceNames : [applianceNames];
-      const rgx = (pattern) => new RegExp(`.*${pattern}.*`, "i");
-
-      // Tìm các spaces mà appliances chứa tên applianceNames
-      const filteredSpaces = await Spaces.find(filter)
-        .populate("categoriesId")
-        .populate("rulesId")
-        .populate({
-          path: "appliancesId",
-          match: { 
-            "appliances.name": { $in: applianceNamesArray.map(name => rgx(name)) } // Lọc theo tên thiết bị
-          },
-        })
-        .exec();
-
-      // Lọc các không gian mà appliances không trống
-      const finalSpaces = filteredSpaces.filter(space => 
-        space.appliancesId && space.appliancesId.appliances.length > 0
-      );
-
-      return res.status(200).json(finalSpaces);
-    }
-
-    // Nếu không có applianceNames, chỉ tìm theo filter khác
-    const filteredSpaces = await Spaces.find(filter)
-      .populate("categoriesId")
-      .populate("rulesId")
-      .populate("appliancesId") // Populate appliancesId nếu không có applianceNames
-      .exec();
-
-    res.status(200).json(filteredSpaces);
-  } catch (error) {
-    next(error); // Gọi next với lỗi để xử lý lỗi
-  }
-});
+// });
+spaceRouter.get("/filter", spaceController.getFilteredSpaces);
 
 
 // get theo id
 spaceRouter.get("/cate/:id", spaceController.getSimilarSpaces);
 
+// update space
+spaceRouter.post("/update/:id", spaceController.updateSpace);
+
+// get statistic for space belong userId, include booking details
+spaceRouter.get("/statistic/:userId", spaceController.getBookingDetailsSpaces);
 // so sánh
 spaceRouter.get("/compare-spaces-differences", async (req, res) => {
   const { id1, id2 } = req.query;
@@ -181,6 +109,24 @@ spaceRouter.get("/compare-spaces-differences", async (req, res) => {
         space2: space2.pricePerHour,
       };
     }
+    if (space1.pricePerDay !== space2.pricePerDay) {
+      differences.pricePerDay = {
+        space1: space1.pricePerDay,
+        space2: space2.pricePerDay,
+      };
+    }
+    // if (space1.pricePerWeek !== space2.pricePerWeek) {
+    //   differences.pricePerWeek = {
+    //     space1: space1.pricePerWeek,
+    //     space2: space2.pricePerWeek,
+    //   };
+    // }
+    if (space1.pricePerMonth !== space2.pricePerMonth) {
+      differences.pricePerMonth = {
+        space1: space1.pricePerMonth,
+        space2: space2.pricePerMonth,
+      };
+    }
 
     if (space1.status !== space2.status) {
       differences.status = { space1: space1.status, space2: space2.status };
@@ -219,24 +165,31 @@ spaceRouter.get("/compare-spaces", async (req, res) => {
       space1: {
         images:
           space1.images && space1.images.length > 0 ? space1.images[0] : null,
-        // id: space1._id,
         name: space1.name,
         location: space1.location,
         area: space1.area,
         pricePerHour: space1.pricePerHour,
+        pricePerDay: space1.pricePerDay,
+        // pricePerWeek: space1.pricePerWeek,
+        pricePerMonth: space1.pricePerMonth,
         status: space1.status,
         images:
           space1.images && space1.images.length > 0 ? space1.images[0] : null,
+          latLng: space1.latLng
       },
       space2: {
         images:
           space2.images && space2.images.length > 0 ? space2.images[0] : null,
-        // id: space2._id,
         name: space2.name,
         location: space2.location,
         area: space2.area,
         pricePerHour: space2.pricePerHour,
+        pricePerDay: space2.pricePerDay,
+        // pricePerWeek: space2.pricePerWeek,
+        pricePerMonth: space2.pricePerMonth,
         status: space2.status,
+        latLng: space2.latLng
+
       },
     };
 
@@ -255,6 +208,7 @@ spaceRouter.get("/:id", async (req, res, next) => {
       .populate("rulesId")
       .populate("appliancesId")
       .populate("categoriesId")
+      .populate("communityStandardsId")
       .exec();
     if (!space) {
       throw createError(400, "Space not found");
@@ -269,7 +223,9 @@ spaceRouter.get("/:id", async (req, res, next) => {
 spaceRouter.get("/for/:id", async (req, res, next) => {
   try {
     const userId = req.params.id;
-    const user = await Spaces.find({ userId: userId }).exec();
+    const user = await Spaces.find({ userId: userId })
+    .populate("userId")
+    .exec();
 
     if (!user) {
       return res.status(404).json({ message: "Space not found" });
@@ -281,25 +237,7 @@ spaceRouter.get("/for/:id", async (req, res, next) => {
     res.status(500).json({ message: "Đã xảy ra lỗi khi lấy thông tin " });
   }
 });
-// Từ chối post
-spaceRouter.put("/update-censorship/:id", async (req, res, next) => {
-  try {
-    const { communityStandardsId } = req.body;
-    const updatedPost = await Spaces.findByIdAndUpdate(
-      req.params.id,
-      { censorship: "Từ chối", communityStandardsId },
-      { new: true }
-    ).populate("communityStandardsId");
 
-    if (!updatedPost) {
-      return res.status(404).json({ message: "Không tìm thấy post" });
-    }
-
-    res.json(updatedPost);
-  } catch (error) {
-    next(error);
-  }
-});
 
 // chấp nhận post
 spaceRouter.put("/update/:postId", async (req, res, next) => {
@@ -317,11 +255,19 @@ spaceRouter.put("/update/:postId", async (req, res, next) => {
       return res.status(404).json({ message: "PostSpace not found" });
     }
 
+    if (censorship === "Chấp nhận" || censorship === "Từ chối") {
+      await notificationDao.saveAndSendNotification(
+        postSpace.userId.toString(),
+        `${postSpace.name} đã được ${censorship.toLowerCase()}`,
+        postSpace.images && postSpace.images.length > 0 ? postSpace.images[0].url : null,
+        `/spaces/${postSpace._id.toString()}`
+      );
+    }
+
     res.status(200).json(postSpace);
   } catch (error) {
     next(error);
   }
 });
-// spaceRouter.get("/spaces/:id", spaceController.getSpaceByUserId);
 
 export default spaceRouter;

@@ -1,4 +1,9 @@
 import { reviewDao } from "../dao/index.js";
+import Bookings from "../models/bookings.js";
+import Reviews from "../models/reviews.js";
+import Spaces from "../models/spaces.js";
+import { notificationDao } from "../dao/index.js";
+import Users from "../models/users.js";
 
 const getReviewBySId = async (req, res) => {
   try {
@@ -16,7 +21,7 @@ const getReviewBySId = async (req, res) => {
 const deleteReviewBySId = async (req, res) => {
   try {
     const removeReview = await reviewDao.deleteReviewBySId(req.params.id);
-    if (removeReview) {
+    if (removeReview.deletedCount > 0) {
       res.status(200).json({ message: "Review deleted successfully" });
     } else {
       res.status(404).json({ message: "Not found review" });
@@ -38,21 +43,64 @@ const editReviewBySId = async (req, res) => {
     res.status(500).json({ message: error.toString() });
   }
 };
+// const createReview = async (req, res) => {
+//   try {
+//     const { text, rating, spaceId, userId } = req.body;
+//     if (!text || !rating || !spaceId || !userId) {
+//       return res.status(404).json({ message: "All field is required" });
+//     }
+//     const foundSpace = await Spaces.findById(spaceId).lean();
+//     if (!foundSpace) {
+//       return res.status(404).json({ message: "Space not found" });
+//     }
+//     const booking = await Bookings.findOne({
+//       userId,
+//       spaceId,
+//     }).lean();
+//     if (!booking) {
+//       return res.status(404).json({ message: "Booking space not found" });
+//     }
+
+//     const newReview = await Reviews.create({ text, rating, spaceId, userId });
+//     await Spaces.findByIdAndUpdate(spaceId, {
+//       $push: { reviews: newReview._id },
+//     }).lean();
+//     const space = await Spaces.findById(spaceId);
+//     const user = await Users.findById(userId);
+//     const notificationUrl = `/spaces/${spaceId}`;
+//     const userAvatar = user?.avatar || "https://cellphones.com.vn/sforum/wp-content/uploads/2023/10/avatar-trang-4.jpg";
+
+//     await notificationDao.saveAndSendNotification(
+//       space.userId.toString(),
+//       `${user?.fullname} đã đánh giá space ${space?.name}`,
+//       userAvatar,
+//       notificationUrl
+//     );
+
+//     res.status(201).json({ message: "review added successfully", newReview });
+//   } catch (error) {
+//     res.status(500).json({ message: error.toString() });
+//   }
+// };
+
 const createReview = async (req, res) => {
   try {
     const { text, rating, spaceId, userId } = req.body;
 
-    const newReview = await reviewDao.createReviewsBySId(
-      text,
-      rating,
-      spaceId,
-      userId
-    );
-    res.status(201).json({ message: "review added successfully", newReview });
+    // Kiểm tra đầu vào
+    if (!text || !rating || !spaceId || !userId) {
+      return res.status(404).json({ message: "All fields are required" });
+    }
+
+    // Gọi DAO xử lý logic chính
+    const { newReview, notificationResult } = await reviewDao.createReview(text, rating, spaceId, userId);
+
+    res.status(201).json({ message: "Review added successfully", newReview, notificationResult });
   } catch (error) {
     res.status(500).json({ message: error.toString() });
   }
 };
+
 
 const addReplyToReview = async (req, res) => {
   try {
@@ -78,5 +126,5 @@ export default {
   deleteReviewBySId,
   editReviewBySId,
   createReview,
-  addReplyToReview,
-};
+  addReplyToReview
+}

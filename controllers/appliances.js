@@ -5,10 +5,12 @@ import { appliancesDao } from "../dao/index.js";
 export const getAllAppliances = async (req, res) => {
   try {
     const appliances = await appliancesDao.fetchAllAppliances();
+    if (!appliances) {
+      return res.status(500).json({ error: "Error: Cannot retrieve appliances" });
+    }
     return res.status(200).json(appliances);
   } catch (error) {
-    console.error("Error fetching appliances:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({ error: `Error: ${error.message}` });
   }
 };
 
@@ -18,7 +20,6 @@ export const getAllAppliancesByCategories = async (req, res) => {
     const appliances = await appliancesDao.fetchAllAppliancesCategories(categoryId);
     return res.status(200).json(appliances);
   } catch (error) {
-    console.error("Error fetching appliances:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -42,7 +43,6 @@ export const getAllAppliancesByCategories = async (req, res) => {
 
     return res.status(201).json({ success: true, appliance: newAppliance });
   } catch (error) {
-    console.error('Error creating appliance:', error);
     return res.status(500).json({ success: false, message: 'Error creating appliance' });
   }
 };

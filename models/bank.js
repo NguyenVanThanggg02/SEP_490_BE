@@ -17,6 +17,6 @@ const bankSchema = new Schema(
   }
 );
 
-const Bank = mongoose.model("bank", bankSchema);
+const Bank = mongoose.model("banks", bankSchema);
 
 export default Bank;
