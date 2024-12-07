@@ -11,7 +11,9 @@ bankAccountRouter.get("/", async (req, res) => {
       .populate("bank")
       .populate("user")
       .exec();
-
+      if (bankAccounts.length === 0) {
+        return res.status(404).json({ message: "Bank accounts not found" });
+      }
     res.status(200).json(bankAccounts);
   } catch (error) {
     res.status(500).json({ message: "Lỗi server", error });

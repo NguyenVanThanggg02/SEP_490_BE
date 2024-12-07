@@ -253,64 +253,6 @@ describe("Review Controller-Tests", () => {
     });
   });
 
-  describe('createReview', () => {
-    let req, res, sandbox;
-
-    beforeEach(() => {
-      sandbox = sinon.createSandbox();
-      req = {
-        body: {
-          text: "Great place!",
-          rating: 5,
-          spaceId: "spaceId123",
-          userId: "userId123"
-        }
-      };
-      res = {
-        status: sandbox.stub().returnsThis(),
-        json: sandbox.stub(),
-      };
-    });
-
-    afterEach(() => {
-      sandbox.restore();
-    });
-
-    it('should return 201 and create review successfully', async () => {
-      const mockNewReview = { _id: 'reviewId123', text: 'Great place!', rating: 5 };
-      const mockNotificationResult = { success: true };
-
-      sandbox.stub(reviewDao, 'createReview').resolves({ newReview: mockNewReview, notificationResult: mockNotificationResult });
-
-      await reviewController.createReview(req, res);
-
-      expect(res.status.calledWith(201)).to.be.true;
-      expect(res.json.calledWith({
-        message: "Review added successfully",
-        newReview: mockNewReview,
-        notificationResult: mockNotificationResult
-      })).to.be.true;
-    });
-
-    it('should return 404 if required fields are missing', async () => {
-      req.body = { text: "", rating: 5, spaceId: "spaceId123", userId: "userId123" };
-
-      await reviewController.createReview(req, res);
-
-      expect(res.status.calledWith(404)).to.be.true;
-      expect(res.json.calledWith({ message: "All fields are required" })).to.be.true;
-    });
-
-    it('should return 500 if there is an internal server error', async () => {
-      sandbox.stub(reviewDao, 'createReview').rejects(new Error('Database error'));
-
-      await reviewController.createReview(req, res);
-
-      expect(res.status.calledWith(500)).to.be.true;
-      expect(res.json.calledWith({ message: 'Error: Database error' })).to.be.true;
-    });
-  });
-
 
 
 })

@@ -43,59 +43,41 @@ const editReviewBySId = async (req, res) => {
     res.status(500).json({ message: error.toString() });
   }
 };
-// const createReview = async (req, res) => {
-//   try {
-//     const { text, rating, spaceId, userId } = req.body;
-//     if (!text || !rating || !spaceId || !userId) {
-//       return res.status(404).json({ message: "All field is required" });
-//     }
-//     const foundSpace = await Spaces.findById(spaceId).lean();
-//     if (!foundSpace) {
-//       return res.status(404).json({ message: "Space not found" });
-//     }
-//     const booking = await Bookings.findOne({
-//       userId,
-//       spaceId,
-//     }).lean();
-//     if (!booking) {
-//       return res.status(404).json({ message: "Booking space not found" });
-//     }
-
-//     const newReview = await Reviews.create({ text, rating, spaceId, userId });
-//     await Spaces.findByIdAndUpdate(spaceId, {
-//       $push: { reviews: newReview._id },
-//     }).lean();
-//     const space = await Spaces.findById(spaceId);
-//     const user = await Users.findById(userId);
-//     const notificationUrl = `/spaces/${spaceId}`;
-//     const userAvatar = user?.avatar || "https://cellphones.com.vn/sforum/wp-content/uploads/2023/10/avatar-trang-4.jpg";
-
-//     await notificationDao.saveAndSendNotification(
-//       space.userId.toString(),
-//       `${user?.fullname} đã đánh giá space ${space?.name}`,
-//       userAvatar,
-//       notificationUrl
-//     );
-
-//     res.status(201).json({ message: "review added successfully", newReview });
-//   } catch (error) {
-//     res.status(500).json({ message: error.toString() });
-//   }
-// };
-
 const createReview = async (req, res) => {
   try {
     const { text, rating, spaceId, userId } = req.body;
-
-    // Kiểm tra đầu vào
     if (!text || !rating || !spaceId || !userId) {
-      return res.status(404).json({ message: "All fields are required" });
+      return res.status(404).json({ message: "All field is required" });
+    }
+    const foundSpace = await Spaces.findById(spaceId).lean();
+    if (!foundSpace) {
+      return res.status(404).json({ message: "Space not found" });
+    }
+    const booking = await Bookings.findOne({
+      userId,
+      spaceId,
+    }).lean();
+    if (!booking) {
+      return res.status(404).json({ message: "Booking space not found" });
     }
 
-    // Gọi DAO xử lý logic chính
-    const { newReview, notificationResult } = await reviewDao.createReview(text, rating, spaceId, userId);
+    const newReview = await Reviews.create({ text, rating, spaceId, userId });
+    await Spaces.findByIdAndUpdate(spaceId, {
+      $push: { reviews: newReview._id },
+    }).lean();
+    const space = await Spaces.findById(spaceId);
+    const user = await Users.findById(userId);
+    const notificationUrl = `/spaces/${spaceId}`;
+    const userAvatar = user?.avatar || "https://cellphones.com.vn/sforum/wp-content/uploads/2023/10/avatar-trang-4.jpg";
 
-    res.status(201).json({ message: "Review added successfully", newReview, notificationResult });
+    await notificationDao.saveAndSendNotification(
+      space.userId.toString(),
+      `${user?.fullname} đã đánh giá space ${space?.name}`,
+      userAvatar,
+      notificationUrl
+    );
+
+    res.status(201).json({ message: "review added successfully", newReview });
   } catch (error) {
     res.status(500).json({ message: error.toString() });
   }
