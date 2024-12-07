@@ -274,4 +274,83 @@ describe("Bank Account  Tests", () => {
             expect(res.body).to.have.property("error");
         });
     });
+    describe("DELETE /:accountId", () => {
+        let findByIdAndDeleteStub, findByIdStub, saveStub;
+      
+        beforeEach(() => {
+          // Stub phương thức của BankAccount và Users
+          findByIdAndDeleteStub = sinon.stub(BankAccount, "findByIdAndDelete");
+          findByIdStub = sinon.stub(Users, "findById");
+          saveStub = sinon.stub(Users.prototype, "save");
+        });
+      
+        afterEach(() => {
+          // Khôi phục stub sau mỗi test case
+          sinon.restore();
+        });
+      
+        it("should delete the bank account successfully", async () => {
+          const accountId = "123456";
+          const mockBankAccount = { _id: accountId, user: "user123" };
+          const mockUser = {
+            _id: "user123",
+            bankAccounts: [accountId],
+            save: saveStub.resolves(),
+          };
+      
+          // Mock BankAccount.findByIdAndDelete trả về tài khoản ngân hàng giả lập
+          findByIdAndDeleteStub.resolves(mockBankAccount);
+      
+          // Mock Users.findById trả về user giả lập
+          findByIdStub.resolves(mockUser);
+      
+          const res = await request(app).delete(`/bankaccount/${accountId}`);
+      
+          expect(res.status).to.equal(200);
+          expect(res.body).to.have.property("message").that.equals("Tài khoản ngân hàng đã được xóa thành công");
+          expect(res.body.bankAccount).to.deep.equal(mockBankAccount);
+        });
+      
+        it("should return 404 if the bank account is not found", async () => {
+          const accountId = "nonexistent123";
+      
+          // Mock BankAccount.findByIdAndDelete trả về null (không tìm thấy)
+          findByIdAndDeleteStub.resolves(null);
+      
+          const res = await request(app).delete(`/bankaccount/${accountId}`);
+      
+          expect(res.status).to.equal(404);
+          expect(res.body).to.have.property("message").that.equals("Tài khoản ngân hàng không tìm thấy");
+        });
+      
+        it("should handle server errors", async () => {
+          const accountId = "error123";
+      
+          // Giả lập lỗi server trong BankAccount.findByIdAndDelete
+          findByIdAndDeleteStub.throws(new Error("Server error"));
+      
+          const res = await request(app).delete(`/bankaccount/${accountId}`);
+      
+          expect(res.status).to.equal(500);
+          expect(res.body).to.have.property("message").that.equals("Lỗi server");
+          expect(res.body).to.have.property("error");
+        });
+      
+        it("should handle user not found when removing accountId", async () => {
+          const accountId = "123456";
+          const mockBankAccount = { _id: accountId, user: "user123" };
+      
+          // Mock BankAccount.findByIdAndDelete trả về tài khoản ngân hàng giả lập
+          findByIdAndDeleteStub.resolves(mockBankAccount);
+      
+          // Mock Users.findById trả về null (người dùng không tìm thấy)
+          findByIdStub.resolves(null);
+      
+          const res = await request(app).delete(`/bankaccount/${accountId}`);
+      
+          expect(res.status).to.equal(200);
+          expect(res.body).to.have.property("message").that.equals("Tài khoản ngân hàng đã được xóa thành công");
+          expect(res.body.bankAccount).to.deep.equal(mockBankAccount);
+        });
+      });
 })
