@@ -1,20 +1,19 @@
-import { expect } from "chai";
 import sinon from "sinon";
 import spaceController from "../controllers/spaces.js";
 import { notificationDao, spaceDao } from "../dao/index.js";
 import Spaces from "../models/spaces.js";
 import cloudinary from "../cloudinary.config.js";
 import express from 'express';
-import spaceRouter from '../routes/spaces.js';
-import UserNeeds from "../models/userNeeds.js";
 import Users from "../models/users.js";
-import Appliances from "../models/appliances.js";
 import CommunityStandards from "../models/communityStandards.js";
 import mongoose from "mongoose";
+import spacesRouter from "../routes/spaces.js";
+import request from "supertest";
+import { expect } from 'chai';
 
 
 describe("Space Controller-Tests", () => {
-  let req, res, sandbox, app;
+  let req, res, sandbox
 
   beforeEach(() => {
     req = {
@@ -674,6 +673,123 @@ describe("createNewSpace", () => {
 
     expect(res.status.calledWith(500)).to.be.true;
     expect(res.json.calledWith({ success: false, message: "Error creating space: Database error" })).to.be.true;
+  });
+});
+
+const app = express();
+    app.use(express.json());
+    app.use("/spaces", spacesRouter);
+describe("GET /search/:name", () => {
+  let findStub;
+
+  beforeEach(() => {
+    // Stub phương thức find của mô hình Spaces
+    findStub = sinon.stub(Spaces, "find");
+  });
+
+  afterEach(() => {
+    // Khôi phục các stub sau mỗi test case
+    sinon.restore();
+  });
+
+  it("Tìm thấy không gian với tên tương ứng", async () => {
+    const mockSearchResult = [
+      { _id: new mongoose.Types.ObjectId(), name: "Test Space", description: "Test space description" },
+    ];
+
+    // Giả lập phương thức find trả về kết quả tìm kiếm
+    findStub.resolves(mockSearchResult);
+
+    const res = await request(app).get("/spaces/search/Test Space");
+
+    // Kiểm tra kết quả trả về
+    expect(res.status).to.equal(200);
+    expect(res.body).to.be.an("array");
+    expect(res.body[0]).to.have.property("name", "Test Space");
+    expect(res.body[0]).to.have.property("description", "Test space description");
+  });
+
+  it("Xử lý lỗi server khi có lỗi cơ sở dữ liệu", async () => {
+    // Giả lập lỗi cơ sở dữ liệu khi gọi find
+    findStub.rejects(new Error("Database error"));
+
+    const res = await request(app).get("/spaces/search/AnySpace");
+
+    // Kiểm tra kết quả trả về
+    expect(res.status).to.equal(500);
+    expect(res.body).to.have.property("message", "Internal Server Error");
+  });
+});
+
+describe("GET /compare-spaces-differences", () => {
+  let findByIdStub;
+
+  beforeEach(() => {
+    // Stub phương thức findById của Mongoose trước mỗi test
+    findByIdStub = sinon.stub(Spaces, "findById");
+  });
+
+  afterEach(() => {
+    // Khôi phục phương thức sau mỗi test
+    findByIdStub.restore();
+  });
+
+  it("Tìm thấy hai sản phẩm và có sự khác biệt", async () => {
+    const space1 = { _id: "spaceId1", name: "Space A", location: "Location 1", pricePerHour: 100, pricePerDay: 200, pricePerMonth: 300, status: "available", images: ["image1.jpg"] };
+    const space2 = { _id: "spaceId2", name: "Space B", location: "Location 2", pricePerHour: 150, pricePerDay: 250, pricePerMonth: 350, status: "unavailable", images: ["image2.jpg"] };
+
+    // Giả lập phương thức findById trả về dữ liệu
+    findByIdStub.onCall(0).resolves(space1);
+    findByIdStub.onCall(1).resolves(space2);
+
+    const res = await request(app).get("/spaces/compare-spaces-differences?id1=spaceId1&id2=spaceId2");
+
+    expect(res.status).to.equal(200); // Kiểm tra mã trạng thái là 200
+    expect(res.body).to.have.property("name");
+    expect(res.body.name.space1).to.equal("Space A");
+    expect(res.body.name.space2).to.equal("Space B");
+    expect(res.body).to.have.property("location");
+    expect(res.body.location.space1).to.equal("Location 1");
+    expect(res.body.location.space2).to.equal("Location 2");
+    expect(res.body).to.have.property("pricePerHour");
+    expect(res.body.pricePerHour.space1).to.equal(100);
+    expect(res.body.pricePerHour.space2).to.equal(150);
+  });
+
+  it("Không tìm thấy một hoặc cả hai sản phẩm", async () => {
+    // Giả lập phương thức findById trả về null cho một sản phẩm
+    findByIdStub.onCall(0).resolves(null);
+    findByIdStub.onCall(1).resolves({ _id: "spaceId2" });
+
+    const res = await request(app).get("/spaces/compare-spaces-differences?id1=spaceId1&id2=spaceId2");
+
+    expect(res.status).to.equal(404); // Kiểm tra mã trạng thái là 404
+    expect(res.body).to.have.property("message", "Không tìm thấy một hoặc cả hai sản phẩm");
+  });
+
+  it("Hai sản phẩm giống nhau", async () => {
+    const space1 = { _id: "spaceId1", name: "Space A", location: "Location 1", pricePerHour: 100, pricePerDay: 200, pricePerMonth: 300, status: "available", images: ["image1.jpg"] };
+    const space2 = { _id: "spaceId2", name: "Space A", location: "Location 1", pricePerHour: 100, pricePerDay: 200, pricePerMonth: 300, status: "available", images: ["image1.jpg"] };
+
+    // Giả lập phương thức findById trả về dữ liệu giống nhau
+    findByIdStub.onCall(0).resolves(space1);
+    findByIdStub.onCall(1).resolves(space2);
+
+    const res = await request(app).get("/spaces/compare-spaces-differences?id1=spaceId1&id2=spaceId2");
+
+    expect(res.status).to.equal(200); // Kiểm tra mã trạng thái là 200
+    expect(res.body).to.have.property("message");
+  expect(res.body.message).to.equal("Hai sản phẩm giống nhau"); 
+  });
+
+  it("Xử lý lỗi server khi có lỗi cơ sở dữ liệu", async () => {
+    // Giả lập lỗi trong quá trình truy vấn
+    findByIdStub.onCall(0).throws(new Error("Database error"));
+
+    const res = await request(app).get("/spaces/compare-spaces-differences?id1=spaceId1&id2=spaceId2");
+
+    expect(res.status).to.equal(500); // Kiểm tra mã trạng thái là 500
+    expect(res.body).to.have.property("message", "Đã xảy ra lỗi khi so sánh sản phẩm");
   });
 });
 

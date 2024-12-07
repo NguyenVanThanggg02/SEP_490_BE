@@ -44,9 +44,12 @@ spaceRouter.get("/search/:name", async (req, res, next) => {
     const searchResult = await Spaces.find({
       name: { $regex: searchRgx, $options: "i" },
     });
-    res.send(searchResult);
+    // res.send(searchResult);
+    res.status(200).json(searchResult);
+
   } catch (error) {
-    throw new Error(error.toString());
+    // throw new Error(error.toString());
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
@@ -115,12 +118,6 @@ spaceRouter.get("/compare-spaces-differences", async (req, res) => {
         space2: space2.pricePerDay,
       };
     }
-    // if (space1.pricePerWeek !== space2.pricePerWeek) {
-    //   differences.pricePerWeek = {
-    //     space1: space1.pricePerWeek,
-    //     space2: space2.pricePerWeek,
-    //   };
-    // }
     if (space1.pricePerMonth !== space2.pricePerMonth) {
       differences.pricePerMonth = {
         space1: space1.pricePerMonth,
@@ -134,13 +131,15 @@ spaceRouter.get("/compare-spaces-differences", async (req, res) => {
 
     // nếu k khác
     if (Object.keys(differences).length === 0) {
-      return res.json({ message: "Hai sản phẩm giống nhau" });
+      // return res.json({ message: "Hai sản phẩm giống nhau" });
+      return res.status(200).json({ message: "Hai sản phẩm giống nhau" });
+
     }
 
     // return những cái khác
-    res.json(differences);
+    // res.json(differences);
+    res.status(200).json(differences);
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: "Đã xảy ra lỗi khi so sánh sản phẩm" });
   }
 });
