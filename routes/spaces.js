@@ -270,7 +270,7 @@ spaceRouter.put("/update/:postId", async (req, res, next) => {
 
     res.status(200).json(postSpace);
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Đã xảy ra lỗi khi chấp nhận post" });
   }
 });
 

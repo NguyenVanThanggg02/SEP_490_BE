@@ -889,76 +889,191 @@ describe("Space Controller-Tests", () => {
   describe('GET /:id', () => {
     let findByIdStub;
 
-  beforeEach(() => {
-    // Giả lập phương thức findById, populate và exec
-    findByIdStub = sinon.stub(Spaces, 'findById');
-  });
-
-  afterEach(() => {
-    // Khôi phục lại phương thức sau mỗi test
-    findByIdStub.restore();
-  });
-
-  it('Tìm thấy không gian, trả về thông tin không gian với populate và exec', async () => {
-    const mockSpace = {
-      _id: 'spaceId1',
-      name: 'Space A',
-      location: 'Location A',
-      area: 100,
-      pricePerHour: 50,
-      pricePerDay: 100,
-      pricePerMonth: 1000,
-      status: 'available',
-      latLng: { lat: 10, lng: 20 },
-      images: ['image1.jpg'],
-      userId: 'userId1',
-      rulesId: ['ruleId1'],
-      appliancesId: ['applianceId1'],
-      categoriesId: ['categoryId1'],
-      communityStandardsId: ['standardId1'],
-    };
-
-    // Giả lập findById trả về đối tượng với populate và exec
-    findByIdStub.returns({
-      populate: sinon.stub().returnsThis(),
-      exec: sinon.stub().returns(Promise.resolve(mockSpace)),
+    beforeEach(() => {
+      // Giả lập phương thức findById, populate và exec
+      findByIdStub = sinon.stub(Spaces, 'findById');
     });
 
-    const res = await request(app).get('/spaces/spaceId1');
-
-    expect(res.status).to.equal(200);
-    expect(res.body).to.have.property('name', 'Space A');
-    expect(res.body).to.have.property('location', 'Location A');
-    expect(res.body).to.have.property('status', 'available');
-  });
-
-  it('Không tìm thấy không gian, trả về mã lỗi 404', async () => {
-    // Giả lập findById trả về null (không tìm thấy không gian)
-    findByIdStub.returns({
-      populate: sinon.stub().returnsThis(),
-      exec: sinon.stub().returns(Promise.resolve(null)),
+    afterEach(() => {
+      // Khôi phục lại phương thức sau mỗi test
+      findByIdStub.restore();
     });
 
-    const res = await request(app).get('/spaces/spaceId1');
+    it('Tìm thấy không gian, trả về thông tin không gian với populate và exec', async () => {
+      const mockSpace = {
+        _id: 'spaceId1',
+        name: 'Space A',
+        location: 'Location A',
+        area: 100,
+        pricePerHour: 50,
+        pricePerDay: 100,
+        pricePerMonth: 1000,
+        status: 'available',
+        latLng: { lat: 10, lng: 20 },
+        images: ['image1.jpg'],
+        userId: 'userId1',
+        rulesId: ['ruleId1'],
+        appliancesId: ['applianceId1'],
+        categoriesId: ['categoryId1'],
+        communityStandardsId: ['standardId1'],
+      };
 
-    expect(res.status).to.equal(404);
-    expect(res.body).to.have.property('message', 'Space not found');
-  });
+      // Giả lập findById trả về đối tượng với populate và exec
+      findByIdStub.returns({
+        populate: sinon.stub().returnsThis(),
+        exec: sinon.stub().returns(Promise.resolve(mockSpace)),
+      });
 
-  it('Xử lý lỗi hệ thống, trả về mã lỗi 500', async () => {
-    // Giả lập findById trả về lỗi cơ sở dữ liệu
-    findByIdStub.returns({
-      populate: sinon.stub().returnsThis(),
-      exec: sinon.stub().returns(Promise.reject(new Error('Database error'))),
+      const res = await request(app).get('/spaces/spaceId1');
+
+      expect(res.status).to.equal(200);
+      expect(res.body).to.have.property('name', 'Space A');
+      expect(res.body).to.have.property('location', 'Location A');
+      expect(res.body).to.have.property('status', 'available');
     });
 
-    const res = await request(app).get('/spaces/spaceId1');
+    it('Không tìm thấy không gian, trả về mã lỗi 404', async () => {
+      // Giả lập findById trả về null (không tìm thấy không gian)
+      findByIdStub.returns({
+        populate: sinon.stub().returnsThis(),
+        exec: sinon.stub().returns(Promise.resolve(null)),
+      });
 
-    expect(res.status).to.equal(500);
-    expect(res.body).to.have.property('message', 'Đã xảy ra lỗi khi lấy sản phẩm');
+      const res = await request(app).get('/spaces/spaceId1');
+
+      expect(res.status).to.equal(404);
+      expect(res.body).to.have.property('message', 'Space not found');
+    });
+
+    it('Xử lý lỗi hệ thống, trả về mã lỗi 500', async () => {
+      // Giả lập findById trả về lỗi cơ sở dữ liệu
+      findByIdStub.returns({
+        populate: sinon.stub().returnsThis(),
+        exec: sinon.stub().returns(Promise.reject(new Error('Database error'))),
+      });
+
+      const res = await request(app).get('/spaces/spaceId1');
+
+      expect(res.status).to.equal(500);
+      expect(res.body).to.have.property('message', 'Đã xảy ra lỗi khi lấy sản phẩm');
+    });
   });
-});
 
-  
+  describe(" GET /for/:id", () => {
+    let findStub;
 
+    beforeEach(() => {
+      // Mô phỏng phương thức find của Spaces
+      findStub = sinon.stub(Spaces, "find");
+    });
+
+    afterEach(() => {
+      // Khôi phục phương thức stub sau mỗi test case
+      findStub.restore();
+    });
+
+    it("should return 200 and space data when spaces are found for a given userId", async () => {
+      const mockSpaces = [
+        { name: "Space 1", userId: "user123" },
+        { name: "Space 2", userId: "user123" }
+      ];
+
+      findStub.returns({
+        populate: sinon.stub().returnsThis(),
+        exec: sinon.stub().returns(Promise.resolve(mockSpaces))
+      });
+
+      const res = await request(app)
+        .get("/spaces/for/user123")
+        .expect(200);
+
+      expect(res.body).to.deep.equal(mockSpaces);
+    });
+
+    it("should return 404 and error message when no spaces are found for a given userId", async () => {
+      findStub.returns({
+        populate: sinon.stub().returnsThis(),
+        exec: sinon.stub().returns(Promise.resolve(null)),
+      });
+
+      const res = await request(app)
+        .get("/spaces/for/user123")
+        .expect(404);
+
+      expect(res.body.message).to.equal("Space not found");
+    });
+
+    it("should return 500 and error message when there is a server error", async () => {
+      findStub.returns({
+        populate: sinon.stub().returnsThis(),
+        exec: sinon.stub().returns(Promise.reject(new Error("Database error")))  // Lỗi server
+      });
+
+      const res = await request(app)
+        .get("/spaces/for/user123")
+        .expect(500);
+
+      expect(res.body.message).to.equal("Đã xảy ra lỗi khi lấy thông tin ");
+    });
+  });
+
+  describe("PUT /update/:postId", () => {
+    let findOneAndUpdateStub, saveAndSendNotificationStub;
+
+    beforeEach(() => {
+      // Mô phỏng phương thức findOneAndUpdate của Spaces
+      findOneAndUpdateStub = sinon.stub(Spaces, "findOneAndUpdate");
+      saveAndSendNotificationStub = sinon.stub(notificationDao, "saveAndSendNotification");
+    });
+
+    afterEach(() => {
+      // Khôi phục các stub sau mỗi test case
+      findOneAndUpdateStub.restore();
+      saveAndSendNotificationStub.restore();
+    });
+
+    it("should return 200 and the updated post when post is found and updated", async () => {
+      const mockPost = {
+        _id: "123456",
+        name: "Test Space",
+        userId: "user123",
+        censorship: "Chấp nhận",
+        images: [{ url: "http://image.url" }],
+      };
+
+      findOneAndUpdateStub.returns(Promise.resolve(mockPost));
+
+      const res = await request(app)
+        .put("/spaces/update/123456")
+        .send({ censorship: "Chấp nhận" })
+        .expect(200);
+
+      expect(res.body.censorship).to.equal("Chấp nhận");
+      expect(saveAndSendNotificationStub.calledOnce).to.be.true;
+    });
+
+    it("should return 404 and error message when post is not found", async () => {
+      findOneAndUpdateStub.returns(Promise.resolve(null));
+
+      const res = await request(app)
+        .put("/spaces/update/123456")
+        .send({ censorship: "Từ chối" })
+        .expect(404);
+
+      expect(res.body.message).to.equal("PostSpace not found");
+      expect(saveAndSendNotificationStub.called).to.be.false;
+    });
+
+    it("should return 500 and error message when there is a server error", async () => {
+      findOneAndUpdateStub.returns((new Error("Database error")));
+
+      const res = await request(app)
+        .put("/spaces/update/123456")
+        .send({ censorship: "Chấp nhận" })
+        .expect(500);
+
+      expect(res.body.message).to.equal("Đã xảy ra lỗi khi chấp nhận post");
+      expect(saveAndSendNotificationStub.called).to.be.false;
+    });
+  });
 });
