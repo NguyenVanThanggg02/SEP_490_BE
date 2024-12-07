@@ -34,7 +34,7 @@ categoriesRouter.post("/", async (req, res, next) => {
     await newCate.save();
     res.status(200).json(newCate);
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 categoriesRouter.put("/:id", async (req, res, next) => {});
