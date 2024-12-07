@@ -113,4 +113,103 @@ describe("Bank Account  Tests", () => {
             expect(res.body).to.have.property("message").that.equals("Lỗi server");
         });
     });
+    describe("POST /bankaccount", () => {
+        let findOneStub;
+        let saveStub;
+        let findByIdStub;
+        beforeEach(() => {
+            // Mock phương thức findOne của Mongoose để kiểm tra tài khoản ngân hàng đã tồn tại
+            findOneStub = sinon.stub(BankAccount, "findOne");
+            // Mock phương thức save của Mongoose
+            saveStub = sinon.stub(BankAccount.prototype, "save");
+            // Mock phương thức findById của Users
+            findByIdStub = sinon.stub(Users, "findById");
+        });
+        afterEach(() => {
+            // Khôi phục lại các stub sau mỗi test case
+            sinon.restore();
+        });
+        it("should return 400 if required fields are missing", async () => {
+            const res = await request(app)
+                .post("/bankaccount")
+                .send({}); // Không gửi thông tin bắt buộc
+            expect(res.status).to.equal(400);
+            expect(res.body).to.have.property("message").that.equals("Thiếu trường bắt buộc trong yêu cầu");
+        });
+        it("should return 400 if the bank account already exists", async () => {
+            const mockBankAccount = { bank: "Bank A", accountNumber: "12345" };
+            // Giả lập BankAccount.findOne trả về một tài khoản ngân hàng đã tồn tại
+            findOneStub.returns({
+                exec: sinon.stub().resolves(mockBankAccount)
+            });
+            const res = await request(app)
+                .post("/bankaccount")
+                .send({ user: "user123", bank: "Bank A", accountNumber: "12345" });
+            expect(res.status).to.equal(400); // Kiểm tra mã lỗi 400
+            expect(res.body).to.have.property("message").that.equals("Tài khoản ngân hàng đã tồn tại");
+        });
+        it("should create a new bank account successfully", async () => {
+            const mockUserId = "user123";
+            const mockBankAccount = {
+                bank: "Bank A",
+                user: mockUserId,
+                accountNumber: "12345",
+            };
+            const mockUser = {
+                _id: mockUserId,
+                bankAccounts: [],
+                save: sinon.stub().returns(Promise.resolve()),
+            };
+            // Mock findOne trả về null (không có tài khoản ngân hàng)
+            findOneStub.returns({
+                exec: sinon.stub().resolves(null)
+            });
+            // Mock save của BankAccount để trả về một đối tượng mới
+            saveStub.returns(Promise.resolve(mockBankAccount));
+            // Mock findById để trả về user mock
+            findByIdStub.returns({
+                exec: sinon.stub().resolves(mockUser)
+            });
+            const res = await request(app)
+                .post("/bankaccount")
+                .send({ user: mockUserId, bank: "Bank A", accountNumber: "12345" });
+            expect(res.status).to.equal(201);
+            expect(res.body).to.have.property("message").that.equals("Tài khoản ngân hàng đã được thêm thành công");
+            expect(res.body.bankAccount).to.deep.equal(mockBankAccount);
+        });
+        it("should return 404 if user is not found", async () => {
+            const mockUserId = "user123";
+
+            // Mock findOne trả về một tài khoản ngân hàng giả lập
+            findOneStub.returns({
+                exec: sinon.stub().resolves({ bank: "Bank A", accountNumber: "12345" })
+            });
+
+            // Mock save trả về tài khoản ngân hàng mới
+            saveStub.returns(Promise.resolve({ bank: "Bank A", accountNumber: "12345" }));
+
+            // Mock findById trả về null (người dùng không tìm thấy)
+            findByIdStub.returns({
+                exec: sinon.stub().resolves(null)
+            });
+
+            const res = await request(app)
+                .post("/bankaccount")
+                .send({ user: mockUserId, bank: "Bank A", accountNumber: "12345" });
+
+            expect(res.status).to.equal(404);
+            expect(res.body).to.have.property("message").that.equals("Người dùng không tìm thấy");
+        });
+
+        it("should return 500 if there is a server error", async () => {
+            // Giả lập lỗi server trong findOne
+            findOneStub.throws(new Error("Server Error"));
+            const res = await request(app)
+                .post("/bankaccount")
+                .send({ user: "user123", bank: "Bank A", accountNumber: "12345" });
+            expect(res.status).to.equal(500); // Kiểm tra mã lỗi 500 khi có lỗi trong server
+            expect(res.body).to.have.property("message").that.equals("Lỗi server");
+        });
+    });
+
 })
