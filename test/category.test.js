@@ -111,4 +111,57 @@ describe("Category Controller-Tests", () => {
       expect(res.body).to.have.property("message", "Internal Server Error");
     });
   });
+  describe("POST /categories", () => {
+    let findOneStub, saveStub;
+    beforeEach(() => {
+      // Stub phương thức findOne và save của Mongoose
+      findOneStub = sinon.stub(Categories, "findOne");
+      saveStub = sinon.stub(Categories.prototype, "save");
+    });
+    afterEach(() => {
+      // Khôi phục phương thức gốc sau mỗi test
+      sinon.restore();
+    });
+    it("Tạo mới category thành công", async () => {
+      const mockCategory = { name: "Category 1", description: "Description 1" };
+      // Giả lập findOne không tìm thấy category trùng tên
+      findOneStub.returns({
+        exec: sinon.stub().resolves(null),
+      });
+      // Giả lập save lưu thành công category mới
+      saveStub.resolves({
+        _id: "mockId",
+        name: mockCategory.name,
+        description: mockCategory.description,
+      });
+      const res = await request(app).post("/categories").send(mockCategory);
+      expect(res.status).to.equal(200);
+      expect(res.body).to.have.property("name", mockCategory.name);
+      expect(res.body).to.have.property("description", mockCategory.description);
+    });
+    it("Trả về 400 nếu category name đã tồn tại", async () => {
+      const mockCategory = { name: "Category 1", description: "Description 1" };
+      // Giả lập findOne trả về category trùng tên
+      findOneStub.returns({
+        exec: sinon.stub().resolves(mockCategory),
+      });
+      const res = await
+        request(app)
+          .post("/categories")
+          .send({ name: "Category 1", description: "Another description" });
+      expect(res.status).to.equal(400);
+      expect(res.body).to.have.property(
+        "message",
+        "Categories name already exists"
+      );
+    });
+    it("Trả về 500 nếu xảy ra lỗi server", async () => {
+      const mockCategory = { name: "Category 1", description: "Description 1" };
+      // Giả lập lỗi xảy ra khi gọi findOne
+      findOneStub.throws(new Error("Database Error"));
+      const res = await request(app).post("/categories").send(mockCategory);
+      expect(res.status).to.equal(500);
+      expect(res.body).to.have.property("message");
+    });
+  });
 });
