@@ -438,7 +438,7 @@ describe("Space Controller-Tests", () => {
 
   describe("getProposedSpaces", () => {
     let req, res, sandbox;
-  
+
     beforeEach(() => {
       sandbox = sinon.createSandbox();
       req = { params: { userId: "123" } };
@@ -447,351 +447,518 @@ describe("Space Controller-Tests", () => {
         json: sandbox.stub(),
       };
     });
-  
+
     afterEach(() => {
       sandbox.restore();
     });
-  
+
     it("should return 404 if userId is not provided", async () => {
       req.params.userId = null;
-  
+
       await spaceController.getProposedSpaces(req, res);
-  
+
       expect(res.status.calledWith(404)).to.be.true;
       expect(res.json.calledWith({ message: "UserId is required" })).to.be.true;
     });
-  
+
     it("should return 404 if userNeed is not found", async () => {
       sandbox.stub(spaceDao, "getUserNeedByUserId").resolves(null);
-  
+
       await spaceController.getProposedSpaces(req, res);
-  
+
       expect(res.status.calledWith(404)).to.be.true;
       expect(res.json.calledWith({ message: "Not found user need" })).to.be.true;
     });
-  
+
     it("should return empty data if firstLogin is false", async () => {
       sandbox.stub(spaceDao, "getUserNeedByUserId").resolves({
         userId: { firstLogin: false },
       });
-  
+
       await spaceController.getProposedSpaces(req, res);
-  
+
       expect(res.json.calledWith({ message: "This is not first login", data: [] })).to.be.true;
     });
-  
+
     it("should return spaces based on user preferences", async () => {
       const mockPreferences = ["category1", "category2"];
       const mockSpaces = [{ id: 1, name: "Space 1" }, { id: 2, name: "Space 2" }];
-  
+
       sandbox.stub(spaceDao, "getUserNeedByUserId").resolves({
         userId: { firstLogin: true },
         productPreferences: mockPreferences,
       });
       sandbox.stub(spaceDao, "getSpacesByPreferences").resolves(mockSpaces);
       sandbox.stub(spaceDao, "updateFirstLoginStatus").resolves();
-  
+
       await spaceController.getProposedSpaces(req, res);
-  
+
       expect(res.json.calledWith({
         message: "Get proposed spaces successfully",
         data: mockSpaces,
       })).to.be.true;
     });
-  
+
     it("should return the first 5 spaces if no preferences are set", async () => {
       const mockSpaces = [{ id: 1, name: "Space 1" }, { id: 2, name: "Space 2" }];
-  
+
       sandbox.stub(spaceDao, "getUserNeedByUserId").resolves({
         userId: { firstLogin: true },
         productPreferences: null,
       });
       sandbox.stub(spaceDao, "getFirst5Spaces").resolves(mockSpaces);
       sandbox.stub(spaceDao, "updateFirstLoginStatus").resolves();
-  
+
       await spaceController.getProposedSpaces(req, res);
-  
+
       expect(res.json.calledWith({
         message: "Get proposed spaces successfully",
         data: mockSpaces,
       })).to.be.true;
     });
-  
+
     it("should handle errors and return status 500", async () => {
       sandbox.stub(spaceDao, "getUserNeedByUserId").rejects(new Error("Database error"));
-  
+
       await spaceController.getProposedSpaces(req, res);
-  
+
       expect(res.status.calledWith(500)).to.be.true;
       expect(res.json.calledWith({ message: "Get user needs failed" })).to.be.true;
     });
   });
-  
-describe("getBookingDetailsSpaces", () => {
-  let req, res, sandbox;
 
-  beforeEach(() => {
-    sandbox = sinon.createSandbox();
-    req = { params: { userId: "123" } };
-    res = {
-      status: sandbox.stub().returnsThis(),
-      json: sandbox.stub(),
-    };
+  describe("getBookingDetailsSpaces", () => {
+    let req, res, sandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      req = { params: { userId: "123" } };
+      res = {
+        status: sandbox.stub().returnsThis(),
+        json: sandbox.stub(),
+      };
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should return space with booking info successfully", async () => {
+      const mockSpaces = [
+        { _id: "1", name: "Space 1" },
+        { _id: "2", name: "Space 2" },
+      ];
+      const mockBookings = [
+        { createdAt: "2024-11-01", plusTransId: "trans1" },
+        { createdAt: "2024-11-02", plusTransId: "trans2" },
+      ];
+
+      sandbox.stub(spaceDao, "getSpacesByUserId").resolves(mockSpaces);
+      sandbox.stub(spaceDao, "getBookingsBySpaceId").resolves(mockBookings);
+
+      await spaceController.getBookingDetailsSpaces(req, res);
+
+      expect(res.status.calledWith(200)).to.be.true;
+      expect(res.json.calledWith({
+        message: "Get space with booking info successfully",
+        data: [
+          { _id: "1", name: "Space 1", bookings: mockBookings },
+          { _id: "2", name: "Space 2", bookings: mockBookings },
+        ],
+      })).to.be.true;
+    });
+
+    it("should handle missing userId and return 404", async () => {
+      req.params.userId = null;
+
+      await spaceController.getBookingDetailsSpaces(req, res);
+
+      expect(res.status.calledWith(404)).to.be.true;
+      expect(res.json.calledWith({ message: "All field is required" })).to.be.true;
+    });
+
+    it("should handle errors and return status 500", async () => {
+      sandbox.stub(spaceDao, "getSpacesByUserId").rejects(new Error("Database error"));
+
+      await spaceController.getBookingDetailsSpaces(req, res);
+
+      expect(res.status.calledWith(500)).to.be.true;
+      expect(res.json.calledWith({ message: "Get space with booking info failed" })).to.be.true;
+    });
   });
 
-  afterEach(() => {
-    sandbox.restore();
+
+  describe("createNewSpace", () => {
+    let req, res, next, sandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      req = {
+        body: {
+          name: "Test Space",
+          description: "A lovely space for events",
+          location: "Some Location",
+          area: 100,
+          rulesId: "rulesId",
+          userId: "userId",
+          pricePerHour: 20,
+          pricePerDay: 100,
+          pricePerWeek: 500,
+          pricePerMonth: 2000,
+          images: [{ public_id: "img1", url: "http://example.com/img1" }],
+          censorship: false,
+          status: "active",
+          categoriesId: "categoryId",
+          appliancesId: ["applianceId1", "applianceId2"],
+          reportCount: 0,
+          isGoldenHour: false,
+          goldenHourDetails: {},
+          favorite: false,
+          latLng: [10.123456, 106.123456],
+        },
+      };
+      res = {
+        status: sandbox.stub().returnsThis(),
+        json: sandbox.stub(),
+      };
+      next = sandbox.stub(); // Middleware for error handling
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should create a new space successfully", async () => {
+      const mockCommunityStandards = {
+        _id: new mongoose.Types.ObjectId(), // Correctly instantiate ObjectId
+        reasons: [],
+        customReason: [],
+      };
+      const mockNewSpace = {
+        _id: new mongoose.Types.ObjectId(), // Correctly instantiate ObjectId
+        name: req.body.name,
+      };
+
+      sandbox.stub(CommunityStandards.prototype, "save").resolves(mockCommunityStandards);
+      sandbox.stub(Spaces, "create").resolves(mockNewSpace);
+      sandbox.stub(Users, "find").resolves([{ _id: "adminId", role: 1 }]);
+      sandbox.stub(Users, "findById").resolves({ fullname: "Admin User" });
+      sandbox.stub(notificationDao, "saveAndSendNotification").resolves();
+
+      await spaceController.createNewSpace(req, res, next);
+
+      expect(res.status.calledWith(201)).to.be.true;
+      expect(res.json.calledWith({ success: true, space: mockNewSpace })).to.be.true;
+
+      // Check if notification was sent
+      expect(notificationDao.saveAndSendNotification.calledOnce).to.be.true;
+    });
+
+    it("should return 400 if required fields are missing", async () => {
+      delete req.body.name; // Removing required field
+
+      await spaceController.createNewSpace(req, res, next);
+
+      expect(res.status.calledWith(400)).to.be.true;
+      expect(res.json.calledWith({
+        success: false,
+        message: 'Missing required fields',
+      })).to.be.true;
+    });
+
+    it("should handle errors gracefully", async () => {
+      sandbox.stub(CommunityStandards.prototype, "save").throws(new Error("Database error"));
+
+      await spaceController.createNewSpace(req, res, next);
+
+      expect(res.status.calledWith(500)).to.be.true;
+      expect(res.json.calledWith({ success: false, message: "Error creating space: Database error" })).to.be.true;
+    });
   });
 
-  it("should return space with booking info successfully", async () => {
-    const mockSpaces = [
-      { _id: "1", name: "Space 1" },
-      { _id: "2", name: "Space 2" },
-    ];
-    const mockBookings = [
-      { createdAt: "2024-11-01", plusTransId: "trans1" },
-      { createdAt: "2024-11-02", plusTransId: "trans2" },
-    ];
+  const app = express();
+  app.use(express.json());
+  app.use("/spaces", spacesRouter);
+  describe("GET /search/:name", () => {
+    let findStub;
 
-    sandbox.stub(spaceDao, "getSpacesByUserId").resolves(mockSpaces);
-    sandbox.stub(spaceDao, "getBookingsBySpaceId").resolves(mockBookings);
+    beforeEach(() => {
+      // Stub phương thức find của mô hình Spaces
+      findStub = sinon.stub(Spaces, "find");
+    });
 
-    await spaceController.getBookingDetailsSpaces(req, res);
+    afterEach(() => {
+      // Khôi phục các stub sau mỗi test case
+      sinon.restore();
+    });
 
-    expect(res.status.calledWith(200)).to.be.true;
-    expect(res.json.calledWith({
-      message: "Get space with booking info successfully",
-      data: [
-        { _id: "1", name: "Space 1", bookings: mockBookings },
-        { _id: "2", name: "Space 2", bookings: mockBookings },
-      ],
-    })).to.be.true;
+    it("Tìm thấy không gian với tên tương ứng", async () => {
+      const mockSearchResult = [
+        { _id: new mongoose.Types.ObjectId(), name: "Test Space", description: "Test space description" },
+      ];
+
+      // Giả lập phương thức find trả về kết quả tìm kiếm
+      findStub.resolves(mockSearchResult);
+
+      const res = await request(app).get("/spaces/search/Test Space");
+
+      // Kiểm tra kết quả trả về
+      expect(res.status).to.equal(200);
+      expect(res.body).to.be.an("array");
+      expect(res.body[0]).to.have.property("name", "Test Space");
+      expect(res.body[0]).to.have.property("description", "Test space description");
+    });
+
+    it("Xử lý lỗi server khi có lỗi cơ sở dữ liệu", async () => {
+      // Giả lập lỗi cơ sở dữ liệu khi gọi find
+      findStub.rejects(new Error("Database error"));
+
+      const res = await request(app).get("/spaces/search/AnySpace");
+
+      // Kiểm tra kết quả trả về
+      expect(res.status).to.equal(500);
+      expect(res.body).to.have.property("message", "Internal Server Error");
+    });
   });
 
-  it("should handle missing userId and return 404", async () => {
-    req.params.userId = null;
+  describe("GET /compare-spaces-differences", () => {
+    let findByIdStub;
 
-    await spaceController.getBookingDetailsSpaces(req, res);
+    beforeEach(() => {
+      // Stub phương thức findById của Mongoose trước mỗi test
+      findByIdStub = sinon.stub(Spaces, "findById");
+    });
 
-    expect(res.status.calledWith(404)).to.be.true;
-    expect(res.json.calledWith({ message: "All field is required" })).to.be.true;
+    afterEach(() => {
+      // Khôi phục phương thức sau mỗi test
+      findByIdStub.restore();
+    });
+
+    it("Tìm thấy hai sản phẩm và có sự khác biệt", async () => {
+      const space1 = { _id: "spaceId1", name: "Space A", location: "Location 1", pricePerHour: 100, pricePerDay: 200, pricePerMonth: 300, status: "available", images: ["image1.jpg"] };
+      const space2 = { _id: "spaceId2", name: "Space B", location: "Location 2", pricePerHour: 150, pricePerDay: 250, pricePerMonth: 350, status: "unavailable", images: ["image2.jpg"] };
+
+      // Giả lập phương thức findById trả về dữ liệu
+      findByIdStub.onCall(0).resolves(space1);
+      findByIdStub.onCall(1).resolves(space2);
+
+      const res = await request(app).get("/spaces/compare-spaces-differences?id1=spaceId1&id2=spaceId2");
+
+      expect(res.status).to.equal(200); // Kiểm tra mã trạng thái là 200
+      expect(res.body).to.have.property("name");
+      expect(res.body.name.space1).to.equal("Space A");
+      expect(res.body.name.space2).to.equal("Space B");
+      expect(res.body).to.have.property("location");
+      expect(res.body.location.space1).to.equal("Location 1");
+      expect(res.body.location.space2).to.equal("Location 2");
+      expect(res.body).to.have.property("pricePerHour");
+      expect(res.body.pricePerHour.space1).to.equal(100);
+      expect(res.body.pricePerHour.space2).to.equal(150);
+    });
+
+    it("Không tìm thấy một hoặc cả hai sản phẩm", async () => {
+      // Giả lập phương thức findById trả về null cho một sản phẩm
+      findByIdStub.onCall(0).resolves(null);
+      findByIdStub.onCall(1).resolves({ _id: "spaceId2" });
+
+      const res = await request(app).get("/spaces/compare-spaces-differences?id1=spaceId1&id2=spaceId2");
+
+      expect(res.status).to.equal(404); // Kiểm tra mã trạng thái là 404
+      expect(res.body).to.have.property("message", "Không tìm thấy một hoặc cả hai sản phẩm");
+    });
+
+    it("Hai sản phẩm giống nhau", async () => {
+      const space1 = { _id: "spaceId1", name: "Space A", location: "Location 1", pricePerHour: 100, pricePerDay: 200, pricePerMonth: 300, status: "available", images: ["image1.jpg"] };
+      const space2 = { _id: "spaceId2", name: "Space A", location: "Location 1", pricePerHour: 100, pricePerDay: 200, pricePerMonth: 300, status: "available", images: ["image1.jpg"] };
+
+      // Giả lập phương thức findById trả về dữ liệu giống nhau
+      findByIdStub.onCall(0).resolves(space1);
+      findByIdStub.onCall(1).resolves(space2);
+
+      const res = await request(app).get("/spaces/compare-spaces-differences?id1=spaceId1&id2=spaceId2");
+
+      expect(res.status).to.equal(200); // Kiểm tra mã trạng thái là 200
+
+      // Kiểm tra nếu không có sự khác biệt
+      if (Object.keys(res.body).includes('message')) {
+        expect(res.body.message).to.equal("Hai sản phẩm giống nhau");
+      } else {
+        // Kiểm tra nếu có sự khác biệt, chẳng hạn so với hình ảnh
+        expect(res.body).to.have.property('images');
+        expect(res.body.images).to.have.property('space1', "image1.jpg");
+        expect(res.body.images).to.have.property('space2', "image1.jpg");
+      }
+
+    });
+
+    it("Xử lý lỗi server khi có lỗi cơ sở dữ liệu", async () => {
+      // Giả lập lỗi trong quá trình truy vấn
+      findByIdStub.onCall(0).throws(new Error("Database error"));
+
+      const res = await request(app).get("/spaces/compare-spaces-differences?id1=spaceId1&id2=spaceId2");
+
+      expect(res.status).to.equal(500); // Kiểm tra mã trạng thái là 500
+      expect(res.body).to.have.property("message", "Đã xảy ra lỗi khi so sánh sản phẩm");
+    });
   });
 
-  it("should handle errors and return status 500", async () => {
-    sandbox.stub(spaceDao, "getSpacesByUserId").rejects(new Error("Database error"));
+  describe('GET /compare-spaces', () => {
+    let findByIdStub;
 
-    await spaceController.getBookingDetailsSpaces(req, res);
+    beforeEach(() => {
+      // Tạo stub cho phương thức findById
+      findByIdStub = sinon.stub(Spaces, 'findById');
+    });
 
-    expect(res.status.calledWith(500)).to.be.true;
-    expect(res.json.calledWith({ message: "Get space with booking info failed" })).to.be.true;
-  });
-});
+    afterEach(() => {
+      // Khôi phục phương thức sau khi kiểm tra
+      findByIdStub.restore();
+    });
 
-
-describe("createNewSpace", () => {
-  let req, res, next, sandbox;
-
-  beforeEach(() => {
-    sandbox = sinon.createSandbox();
-    req = {
-      body: {
-        name: "Test Space",
-        description: "A lovely space for events",
-        location: "Some Location",
+    it('Tìm thấy cả hai sản phẩm, trả về thông tin so sánh', async () => {
+      const space1 = {
+        _id: 'spaceId1',
+        name: 'Space A',
+        location: 'Location A',
         area: 100,
-        rulesId: "rulesId",
-        userId: "userId",
-        pricePerHour: 20,
+        pricePerHour: 50,
         pricePerDay: 100,
-        pricePerWeek: 500,
-        pricePerMonth: 2000,
-        images: [{ public_id: "img1", url: "http://example.com/img1" }],
-        censorship: false,
-        status: "active",
-        categoriesId: "categoryId",
-        appliancesId: ["applianceId1", "applianceId2"],
-        reportCount: 0,
-        isGoldenHour: false,
-        goldenHourDetails: {},
-        favorite: false,
-        latLng: [10.123456, 106.123456],
-      },
-    };
-    res = {
-      status: sandbox.stub().returnsThis(),
-      json: sandbox.stub(),
-    };
-    next = sandbox.stub(); // Middleware for error handling
+        pricePerMonth: 1000,
+        status: 'available',
+        latLng: { lat: 10, lng: 20 },
+        images: ['image1.jpg'],
+      };
+
+      const space2 = {
+        _id: 'spaceId2',
+        name: 'Space B',
+        location: 'Location B',
+        area: 150,
+        pricePerHour: 60,
+        pricePerDay: 120,
+        pricePerMonth: 1200,
+        status: 'available',
+        latLng: { lat: 15, lng: 25 },
+        images: ['image2.jpg'],
+      };
+
+      // Giả lập phương thức findById trả về dữ liệu sản phẩm
+      findByIdStub.onCall(0).resolves(space1);
+      findByIdStub.onCall(1).resolves(space2);
+
+      const res = await request(app).get('/spaces/compare-spaces?id1=spaceId1&id2=spaceId2');
+
+      expect(res.status).to.equal(200);
+      expect(res.body).to.have.property('space1');
+      expect(res.body).to.have.property('space2');
+      expect(res.body.space1.name).to.equal('Space A');
+      expect(res.body.space2.name).to.equal('Space B');
+    });
+
+    it('Không tìm thấy một trong hai sản phẩm, trả về mã lỗi 404', async () => {
+      findByIdStub.onCall(0).resolves(null); // Giả lập không tìm thấy space1
+      findByIdStub.onCall(1).resolves({
+        _id: 'spaceId2',
+        name: 'Space B',
+        location: 'Location B',
+        area: 150,
+        pricePerHour: 60,
+        pricePerDay: 120,
+        pricePerMonth: 1200,
+        status: 'available',
+        latLng: { lat: 15, lng: 25 },
+        images: ['image2.jpg'],
+      });
+
+      const res = await request(app).get('/spaces/compare-spaces?id1=spaceId1&id2=spaceId2');
+
+      expect(res.status).to.equal(404);
+      expect(res.body).to.have.property('message', 'Không tìm thấy một hoặc cả hai sản phẩm');
+    });
+
+    it('Xử lý lỗi hệ thống, trả về mã lỗi 500', async () => {
+      findByIdStub.throws(new Error('Database error'));
+
+      const res = await request(app).get('/spaces/compare-spaces?id1=spaceId1&id2=spaceId2');
+
+      expect(res.status).to.equal(500);
+      expect(res.body).to.have.property('message', 'Đã xảy ra lỗi khi so sánh sản phẩm');
+    });
   });
 
-  afterEach(() => {
-    sandbox.restore();
-  });
-
-  it("should create a new space successfully", async () => {
-    const mockCommunityStandards = {
-      _id: new mongoose.Types.ObjectId(), // Correctly instantiate ObjectId
-      reasons: [],
-      customReason: [],
-    };
-    const mockNewSpace = {
-      _id: new mongoose.Types.ObjectId(), // Correctly instantiate ObjectId
-      name: req.body.name,
-    };
-
-    sandbox.stub(CommunityStandards.prototype, "save").resolves(mockCommunityStandards);
-    sandbox.stub(Spaces, "create").resolves(mockNewSpace);
-    sandbox.stub(Users, "find").resolves([{ _id: "adminId", role: 1 }]);
-    sandbox.stub(Users, "findById").resolves({ fullname: "Admin User" });
-    sandbox.stub(notificationDao, "saveAndSendNotification").resolves();
-
-    await spaceController.createNewSpace(req, res, next);
-
-    expect(res.status.calledWith(201)).to.be.true;
-    expect(res.json.calledWith({ success: true, space: mockNewSpace })).to.be.true;
-
-    // Check if notification was sent
-    expect(notificationDao.saveAndSendNotification.calledOnce).to.be.true;
-  });
-
-  it("should return 400 if required fields are missing", async () => {
-    delete req.body.name; // Removing required field
-
-    await spaceController.createNewSpace(req, res, next);
-
-    expect(res.status.calledWith(400)).to.be.true;
-    expect(res.json.calledWith({
-      success: false,
-      message: 'Missing required fields',
-    })).to.be.true;
-  });
-
-  it("should handle errors gracefully", async () => {
-    sandbox.stub(CommunityStandards.prototype, "save").throws(new Error("Database error"));
-
-    await spaceController.createNewSpace(req, res, next);
-
-    expect(res.status.calledWith(500)).to.be.true;
-    expect(res.json.calledWith({ success: false, message: "Error creating space: Database error" })).to.be.true;
-  });
-});
-
-const app = express();
-    app.use(express.json());
-    app.use("/spaces", spacesRouter);
-describe("GET /search/:name", () => {
-  let findStub;
+  describe('GET /:id', () => {
+    let findByIdStub;
 
   beforeEach(() => {
-    // Stub phương thức find của mô hình Spaces
-    findStub = sinon.stub(Spaces, "find");
+    // Giả lập phương thức findById, populate và exec
+    findByIdStub = sinon.stub(Spaces, 'findById');
   });
 
   afterEach(() => {
-    // Khôi phục các stub sau mỗi test case
-    sinon.restore();
-  });
-
-  it("Tìm thấy không gian với tên tương ứng", async () => {
-    const mockSearchResult = [
-      { _id: new mongoose.Types.ObjectId(), name: "Test Space", description: "Test space description" },
-    ];
-
-    // Giả lập phương thức find trả về kết quả tìm kiếm
-    findStub.resolves(mockSearchResult);
-
-    const res = await request(app).get("/spaces/search/Test Space");
-
-    // Kiểm tra kết quả trả về
-    expect(res.status).to.equal(200);
-    expect(res.body).to.be.an("array");
-    expect(res.body[0]).to.have.property("name", "Test Space");
-    expect(res.body[0]).to.have.property("description", "Test space description");
-  });
-
-  it("Xử lý lỗi server khi có lỗi cơ sở dữ liệu", async () => {
-    // Giả lập lỗi cơ sở dữ liệu khi gọi find
-    findStub.rejects(new Error("Database error"));
-
-    const res = await request(app).get("/spaces/search/AnySpace");
-
-    // Kiểm tra kết quả trả về
-    expect(res.status).to.equal(500);
-    expect(res.body).to.have.property("message", "Internal Server Error");
-  });
-});
-
-describe("GET /compare-spaces-differences", () => {
-  let findByIdStub;
-
-  beforeEach(() => {
-    // Stub phương thức findById của Mongoose trước mỗi test
-    findByIdStub = sinon.stub(Spaces, "findById");
-  });
-
-  afterEach(() => {
-    // Khôi phục phương thức sau mỗi test
+    // Khôi phục lại phương thức sau mỗi test
     findByIdStub.restore();
   });
 
-  it("Tìm thấy hai sản phẩm và có sự khác biệt", async () => {
-    const space1 = { _id: "spaceId1", name: "Space A", location: "Location 1", pricePerHour: 100, pricePerDay: 200, pricePerMonth: 300, status: "available", images: ["image1.jpg"] };
-    const space2 = { _id: "spaceId2", name: "Space B", location: "Location 2", pricePerHour: 150, pricePerDay: 250, pricePerMonth: 350, status: "unavailable", images: ["image2.jpg"] };
+  it('Tìm thấy không gian, trả về thông tin không gian với populate và exec', async () => {
+    const mockSpace = {
+      _id: 'spaceId1',
+      name: 'Space A',
+      location: 'Location A',
+      area: 100,
+      pricePerHour: 50,
+      pricePerDay: 100,
+      pricePerMonth: 1000,
+      status: 'available',
+      latLng: { lat: 10, lng: 20 },
+      images: ['image1.jpg'],
+      userId: 'userId1',
+      rulesId: ['ruleId1'],
+      appliancesId: ['applianceId1'],
+      categoriesId: ['categoryId1'],
+      communityStandardsId: ['standardId1'],
+    };
 
-    // Giả lập phương thức findById trả về dữ liệu
-    findByIdStub.onCall(0).resolves(space1);
-    findByIdStub.onCall(1).resolves(space2);
+    // Giả lập findById trả về đối tượng với populate và exec
+    findByIdStub.returns({
+      populate: sinon.stub().returnsThis(),
+      exec: sinon.stub().returns(Promise.resolve(mockSpace)),
+    });
 
-    const res = await request(app).get("/spaces/compare-spaces-differences?id1=spaceId1&id2=spaceId2");
+    const res = await request(app).get('/spaces/spaceId1');
 
-    expect(res.status).to.equal(200); // Kiểm tra mã trạng thái là 200
-    expect(res.body).to.have.property("name");
-    expect(res.body.name.space1).to.equal("Space A");
-    expect(res.body.name.space2).to.equal("Space B");
-    expect(res.body).to.have.property("location");
-    expect(res.body.location.space1).to.equal("Location 1");
-    expect(res.body.location.space2).to.equal("Location 2");
-    expect(res.body).to.have.property("pricePerHour");
-    expect(res.body.pricePerHour.space1).to.equal(100);
-    expect(res.body.pricePerHour.space2).to.equal(150);
+    expect(res.status).to.equal(200);
+    expect(res.body).to.have.property('name', 'Space A');
+    expect(res.body).to.have.property('location', 'Location A');
+    expect(res.body).to.have.property('status', 'available');
   });
 
-  it("Không tìm thấy một hoặc cả hai sản phẩm", async () => {
-    // Giả lập phương thức findById trả về null cho một sản phẩm
-    findByIdStub.onCall(0).resolves(null);
-    findByIdStub.onCall(1).resolves({ _id: "spaceId2" });
+  it('Không tìm thấy không gian, trả về mã lỗi 404', async () => {
+    // Giả lập findById trả về null (không tìm thấy không gian)
+    findByIdStub.returns({
+      populate: sinon.stub().returnsThis(),
+      exec: sinon.stub().returns(Promise.resolve(null)),
+    });
 
-    const res = await request(app).get("/spaces/compare-spaces-differences?id1=spaceId1&id2=spaceId2");
+    const res = await request(app).get('/spaces/spaceId1');
 
-    expect(res.status).to.equal(404); // Kiểm tra mã trạng thái là 404
-    expect(res.body).to.have.property("message", "Không tìm thấy một hoặc cả hai sản phẩm");
+    expect(res.status).to.equal(404);
+    expect(res.body).to.have.property('message', 'Space not found');
   });
 
-  it("Hai sản phẩm giống nhau", async () => {
-    const space1 = { _id: "spaceId1", name: "Space A", location: "Location 1", pricePerHour: 100, pricePerDay: 200, pricePerMonth: 300, status: "available", images: ["image1.jpg"] };
-    const space2 = { _id: "spaceId2", name: "Space A", location: "Location 1", pricePerHour: 100, pricePerDay: 200, pricePerMonth: 300, status: "available", images: ["image1.jpg"] };
+  it('Xử lý lỗi hệ thống, trả về mã lỗi 500', async () => {
+    // Giả lập findById trả về lỗi cơ sở dữ liệu
+    findByIdStub.returns({
+      populate: sinon.stub().returnsThis(),
+      exec: sinon.stub().returns(Promise.reject(new Error('Database error'))),
+    });
 
-    // Giả lập phương thức findById trả về dữ liệu giống nhau
-    findByIdStub.onCall(0).resolves(space1);
-    findByIdStub.onCall(1).resolves(space2);
+    const res = await request(app).get('/spaces/spaceId1');
 
-    const res = await request(app).get("/spaces/compare-spaces-differences?id1=spaceId1&id2=spaceId2");
-
-    expect(res.status).to.equal(200); // Kiểm tra mã trạng thái là 200
-    expect(res.body).to.have.property("message");
-  expect(res.body.message).to.equal("Hai sản phẩm giống nhau"); 
-  });
-
-  it("Xử lý lỗi server khi có lỗi cơ sở dữ liệu", async () => {
-    // Giả lập lỗi trong quá trình truy vấn
-    findByIdStub.onCall(0).throws(new Error("Database error"));
-
-    const res = await request(app).get("/spaces/compare-spaces-differences?id1=spaceId1&id2=spaceId2");
-
-    expect(res.status).to.equal(500); // Kiểm tra mã trạng thái là 500
-    expect(res.body).to.have.property("message", "Đã xảy ra lỗi khi so sánh sản phẩm");
+    expect(res.status).to.equal(500);
+    expect(res.body).to.have.property('message', 'Đã xảy ra lỗi khi lấy sản phẩm');
   });
 });
 
+  
 
 });

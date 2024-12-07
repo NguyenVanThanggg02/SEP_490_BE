@@ -193,7 +193,9 @@ spaceRouter.get("/compare-spaces", async (req, res) => {
     };
 
     // Trả về tất cả thông tin của hai sản phẩm
-    res.json(comparisonResult);
+    // res.json(comparisonResult);
+    res.status(200).json(comparisonResult);
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Đã xảy ra lỗi khi so sánh sản phẩm" });
@@ -210,12 +212,15 @@ spaceRouter.get("/:id", async (req, res, next) => {
       .populate("communityStandardsId")
       .exec();
     if (!space) {
-      throw createError(400, "Space not found");
+      // throw createError(400, "Space not found");
+      return res.status(404).json({ message: "Space not found" });
+
     }
 
     res.status(200).json(space);
   } catch (error) {
-    next(error);
+    // next(error);
+    res.status(500).json({ message: "Đã xảy ra lỗi khi lấy sản phẩm" });
   }
 });
 // Get Space theo UseId
