@@ -211,5 +211,67 @@ describe("Bank Account  Tests", () => {
             expect(res.body).to.have.property("message").that.equals("Lỗi server");
         });
     });
+    describe("PUT /:accountId", () => {
+        let findByIdStub, saveStub;
 
+        beforeEach(() => {
+            // Stub phương thức findById và save của BankAccount
+            findByIdStub = sinon.stub(BankAccount, "findById");
+            saveStub = sinon.stub(BankAccount.prototype, "save");
+        });
+
+        afterEach(() => {
+            // Khôi phục stub sau mỗi test case
+            sinon.restore();
+        });
+
+        it("should update the bank account successfully", async () => {
+            const accountId = "123456";
+            const updatedData = { bank: "New Bank", accountNumber: "987654" };
+
+            // Mock BankAccount.findById trả về tài khoản ngân hàng giả lập
+            const mockBankAccount = {
+                _id: accountId,
+                bank: "Old Bank",
+                accountNumber: "123456",
+                save: saveStub.resolves(), // Giả lập việc lưu thành công
+            };
+            findByIdStub.resolves(mockBankAccount);
+
+            const res = await request(app)
+                .put(`/bankaccount/${accountId}`)
+                .send(updatedData);
+
+            expect(res.status).to.equal(200);
+            expect(res.body).to.have.property("message").that.equals("Tài khoản ngân hàng đã được cập nhật thành công");
+            expect(res.body.bankAccount).to.deep.include(updatedData); // Kiểm tra thông tin cập nhật
+        });
+
+        it("should return 404 if the bank account is not found", async () => {
+            const accountId = "nonexistent123";
+            findByIdStub.resolves(null); // Giả lập không tìm thấy tài khoản ngân hàng
+
+            const res = await request(app)
+                .put(`/bankaccount/${accountId}`)
+                .send({ bank: "Updated Bank" });
+
+            expect(res.status).to.equal(404);
+            expect(res.body).to.have.property("message").that.equals("Tài khoản ngân hàng không tìm thấy");
+        });
+
+        it("should return 500 if there is a server error", async () => {
+            const accountId = "error123";
+
+            // Giả lập lỗi server trong BankAccount.findById
+            findByIdStub.throws(new Error("Server error"));
+
+            const res = await request(app)
+                .put(`/bankaccount/${accountId}`)
+                .send({ bank: "Updated Bank" });
+
+            expect(res.status).to.equal(500);
+            expect(res.body).to.have.property("message").that.equals("Lỗi server");
+            expect(res.body).to.have.property("error");
+        });
+    });
 })
