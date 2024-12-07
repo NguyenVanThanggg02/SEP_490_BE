@@ -5,6 +5,7 @@ import express from "express";
 import request from "supertest";
 import rulesRouter from "../routes/rules.js";
 import Rules from "../models/rules.js";
+import mongoose from "mongoose";
 describe("Rule Controller-Tests", () => {
     const app = express();
     app.use(express.json());
@@ -66,5 +67,72 @@ describe("Rule Controller-Tests", () => {
             expect(res.body).to.have.property("message", "Internal Server Error");
         });
     });
+
+    describe("POST /rules", () => {
+        let findOneStub, saveStub;
+
+        beforeEach(() => {
+            // Stub các phương thức cần thiết
+            findOneStub = sinon.stub(Rules, "findOne");
+            saveStub = sinon.stub(Rules.prototype, "save");
+        });
+
+        afterEach(() => {
+            // Khôi phục lại các phương thức gốc sau mỗi test
+            sinon.restore();
+        });
+
+        it("Tạo rule mới thành công", async () => {
+            const mockRuleData = { text: "New Rule", description: "Description of the rule" };
+          
+            // Giả lập findOne trả về null (không có rule nào trùng)
+            findOneStub.returns({
+              exec: sinon.stub().resolves(null),
+            });
+          
+            // Giả lập save trả về rule mới tạo
+            const mockId = new mongoose.Types.ObjectId();
+            saveStub.resolves({
+              _id: mockId,
+            });
+          
+            const res = await request(app).post("/rules").send(mockRuleData);
+          
+            // Kiểm tra phản hồi
+            expect(res.status).to.equal(201);
+            expect(res.body).to.be.an("object");
+            expect(res.body).to.have.property("_id");
+            expect(mongoose.Types.ObjectId.isValid(res.body._id)).to.be.true;
+          });
+          
+
+        it("Trả về 400 nếu rule đã tồn tại", async () => {
+            const mockRuleData = { text: "Existing Rule", description: "Description of the rule" };
+
+            // Giả lập findOne trả về rule đã tồn tại
+            findOneStub.returns({
+                exec: sinon.stub().resolves({ _id: "existingRuleId", ...mockRuleData }),
+              });
+          
+
+            const res = await request(app).post("/rules").send(mockRuleData);
+
+            expect(res.status).to.equal(400);
+            expect(res.body).to.have.property("message", "Rule with this text already exists.");
+        });
+
+        it("Trả về 500 nếu có lỗi server", async () => {
+            const mockRuleData = { text: "New Rule", description: "Description of the rule" };
+
+            // Giả lập findOne ném lỗi
+            findOneStub.throws(new Error("Database error"));
+
+            const res = await request(app).post("/rules").send(mockRuleData);
+
+            expect(res.status).to.equal(500);
+            expect(res.body).to.have.property("message", "Internal Server Error");
+        });
+    });
+
 
 })
