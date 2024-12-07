@@ -13,10 +13,12 @@ const rulesRouter = express.Router();
 rulesRouter.get("/", async (req, res, next) => {
   try {
     const rules = await Rules.find({}).exec();
-    if (rules.length === 0) throw createError(404, "Not Found");
+    if (rules.length === 0) 
+      // throw createError(404, "Not Found");
+    res.status(404).json({ message: "Not Found" });
     res.json(rules);
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 rulesRouter.post("/", async (req, res, next) => {
