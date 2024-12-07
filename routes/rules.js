@@ -54,7 +54,7 @@ rulesRouter.post("/addRule", async (req, res, next) => {
     await ruleSet.save(); // Lưu vào database
     res.status(201).json(ruleSet); // Trả về rule mới tạo
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
