@@ -129,7 +129,8 @@ app.use((req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-  const errorMessage = err.message;
+  // const errorMessage = err.message;
+  const errorMessage = err.message || "Internal Server Error";
   const statusCode = err.statusCode || 500;
   const stack = err.stack;
 
@@ -203,7 +204,7 @@ server.listen(Port, async () => {
   }
 });
 
-cron.schedule("*/5 * * * *", refundOwnerSpace.plusHour)
+cron.schedule("* * * * *", refundOwnerSpace.plusHour)
 
 
 cron.schedule("* * * * *", refundOwnerSpace.plusDay)

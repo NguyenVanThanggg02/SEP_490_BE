@@ -26,11 +26,32 @@ export const getAllAppliancesByCategories = async (req, res) => {
 
 
 // Hàm thêm appliance mới
- const createAppliance = async (req, res) => {
+const createAppliance = async (req, res) => {
   try {
     const { name, appliances, categoryId } = req.body;
+    if (!appliances && !categoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "appliances and categoryId cannot be empty",
+      });
+    }
+    if (!Array.isArray(appliances) || appliances.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Appliances list cannot be empty",
+      });
+    }
 
-   
+    // Kiểm tra categoryId riêng lẻ
+    if (!categoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "categoryId cannot be empty",
+      });
+    }
+
+
+
     // Tạo dữ liệu appliance mới
     const applianceData = {
       name,
@@ -43,8 +64,13 @@ export const getAllAppliancesByCategories = async (req, res) => {
 
     return res.status(201).json({ success: true, appliance: newAppliance });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Error creating appliance' });
+    if (error.message.includes("Duplicate key error")) {
+      return res.status(409).json({ success: false, message: "Appliance already exists" });
+    }
+
+    return res.status(500).json({ success: false, message: "Error creating appliance" });
   }
+
 };
 
-export default { getAllAppliances, getAllAppliancesByCategories,createAppliance };
+export default { getAllAppliances, getAllAppliancesByCategories, createAppliance };

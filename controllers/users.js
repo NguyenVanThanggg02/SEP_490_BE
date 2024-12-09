@@ -122,7 +122,14 @@ const forgetPass = async (req, res) => {
   };
   const updateUser = async (req, res) => {
     try {
+      if (Object.keys(req.body).length === 0) {
+        return res.status(400).json({ message: "No data provided for update" });
+      }
       const updateUser = await userDao.updateUser(req.params.id, req.body);
+      if (!updateUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
       res.status(200).json(updateUser);
     } catch (error) {
       res.status(500).json({ error: error.toString() });
@@ -152,8 +159,7 @@ const forgetPass = async (req, res) => {
         images: image, // Trả về thông tin ảnh đã upload
       });
     } catch (error) {
-      console.error('Error uploading images:', error);
-      return res.status(500).json({ message: 'Server error', error });
+      return res.status(500).json({ message: 'Server error', error: error.message });
     }
   };
   

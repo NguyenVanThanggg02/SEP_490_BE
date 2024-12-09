@@ -58,7 +58,14 @@ describe("Community Standards Controller-Tests", () => {
             expect(res.status.calledWith(200)).to.be.true;
             expect(res.json.calledWith(expectedFilteredCommunity)).to.be.true;
         });
-
+        it("should return an empty array and status 200 when no community standards are found", async () => {
+            sandbox.stub(communityStandardsDao, "fetchAllCommunityStandards").resolves([]);
+        
+            await communityStandardsController.getAllCommunityStandards(req, res);
+        
+            expect(res.status.calledWith(200)).to.be.true;
+            expect(res.json.calledWith([])).to.be.true;
+        });             
         it("should handle errors and return status 500", async () => {
             sandbox.stub(communityStandardsDao, "fetchAllCommunityStandards").rejects(new Error("Database error"));
             await communityStandardsController.getAllCommunityStandards(req, res);
