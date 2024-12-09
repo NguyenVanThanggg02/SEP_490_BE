@@ -8,7 +8,8 @@ import reportsDao from "./reports.js";
 import reasonsDao from "./reasons.js";
 import messageDao from "./message.js";
 import communityStandardsDao from "./communityStandards.js";
-import notificationDao from "./notification.js"
+import notificationDao from "./notification.js";
+import systemDao from "./SystemProperties.js";
 
 export {
   userDao,
@@ -21,5 +22,6 @@ export {
   reasonsDao,
   messageDao,
   communityStandardsDao,
-  notificationDao
+  notificationDao,
+  systemDao
 };

@@ -91,6 +91,10 @@ const createReview = async (req, res) => {
     if (!text || !rating || !spaceId || !userId) {
       return res.status(404).json({ message: "All fields are required" });
     }
+    const existingReview = await Reviews.findOne({ userId, spaceId }).lean();
+    if (existingReview) {
+      return res.status(400).json({ message: "Bạn đã đánh giá không gian này trước đó rồi !!!" });
+    }
 
     // Gọi DAO xử lý logic chính
     const { newReview, notificationResult } = await reviewDao.createReview(text, rating, spaceId, userId);

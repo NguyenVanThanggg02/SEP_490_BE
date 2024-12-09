@@ -5,6 +5,6 @@ import {
     getAllData,
 } from "../controllers/dashboardController.js";
 
-dashboardRouter.get("/", getAllData);
+dashboardRouter.post("/", getAllData);
 
 export { dashboardRouter };
