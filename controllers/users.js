@@ -115,6 +115,83 @@ const forgetPass = async (req, res) => {
       return res.send({ Status: "Error", Error: error.message });
     }
   };
+
+  const resentOtp = async (req, res) => {
+    try {
+      const { userId } = req.body;
+  
+      // validate
+      if (!userId) {
+        return res
+          .status(400)
+          .json({ status: false, message: "Thiếu các trường bắt buộc" });
+      }
+  
+      const user = await Users.findById(userId).lean();
+  
+      if (!user) {
+        return res
+          .status(404)
+          .json({ status: false, message: "Không tìm thấy người dùng" });
+      }
+  
+      //  tạo OTP
+      const otp = otpGenerator.generate(6, {
+        upperCaseAlphabets: false,
+        specialChars: false,
+      });
+      console.log("otp", otp);
+      const salt = await bcrypt.genSalt(10);
+      const hashedOtp = await bcrypt.hash(otp, salt);
+  
+      const today = dayjs();
+      const otpExpiredTime = today.add(5, "minute");
+  
+      await Users.findByIdAndUpdate(userId, {
+        otp: hashedOtp,
+        otp_expired_time: otpExpiredTime,
+      }).lean();
+  
+      // gui otp
+      var transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: "thang2k210@gmail.com",
+          pass: "bqvh osxx crfn giai",
+        },
+      });
+  
+      var mailOptions = {
+        from: "thang2k210@gmail.com",
+        to: user.gmail,
+        subject: "Xác nhận lại mật khẩu",
+        html: `
+          <div style="font-family: Arial, sans-serif; text-align: center;">
+            <h2 style="color: #4CAF50;">Xác nhận lại mật khẩu</h2>
+            <p>Xin chào <b>${user.fullname}</b> !!!</p>
+            <p>Chúng tôi đã nhận được yêu cầu truy cập vào tài khoản ngân hàng của bạn. Vui lòng nhập OTP để truy cập tài khoản ngân hàng, OTP có hiệu lực trong vòng 5 phút</p>
+            <div style="width: 100%;font-size: 2rem; text-align: center;">${otp}</div>
+            <p>Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</p>
+            <p>Cảm ơn !!!</p>
+            <img src="https://res.cloudinary.com/degpdpheb/image/upload/v1726589174/logo_bdn2vl.png"></img>
+          </div>
+        `,
+      };
+  
+      transporter.sendMail(mailOptions, function (error, info) {
+        if (error) {
+          console.log(error);
+          return res.status(500).send({ message: "Lỗi khi gửi mail" });
+        } else {
+          return res.send({ message: "Thành công" });
+        }
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).send({ message: error.message });
+    }
+  };
+
   const updateUser = async (req, res) => {
     try {
       const updateUser = await userDao.updateUser(req.params.id, req.body);
@@ -186,6 +263,7 @@ export default {
   changePass,
   forgetPass,
   getUserByUserName,
+  resentOtp,
   updateUser,
   uploadImages,
   removeUserImage
