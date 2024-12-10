@@ -468,7 +468,7 @@ export const getAllData = async (req, res) => {
       axis: bookingByDays.map(booking => dayjs(booking.day).format('DD/MM/YY'))
     }
 
-    res.status(200).json({ user, space, transaction, spaceCensorship, bookingRentalType });
+    res.status(200).json({ profit,user, space, transaction, spaceCensorship, bookingRentalType });
   } catch (error) {
     console.log(error);
     res.status(500);
