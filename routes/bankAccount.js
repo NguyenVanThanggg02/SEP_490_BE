@@ -1,6 +1,7 @@
 import express from "express";
 import BankAccount from "../models/bankAccounts.js";
 import Users from "../models/users.js";
+import dayjs from "dayjs";
 
 const bankAccountRouter = express.Router();
 
@@ -104,7 +105,16 @@ bankAccountRouter.put("/:accountId", async (req, res) => {
         .status(404)
         .json({ message: "Tài khoản ngân hàng không tìm thấy" });
     }
+    // check last time updating bank, only update if after 7 days from the last time update bank
+    const updatedAt = bankAccount.updatedAt;
+    const allowUpdateDay = dayjs(updatedAt).add(7, "day");
+    const isAfterGapDay = dayjs().isAfter(allowUpdateDay); // default milliseconds
 
+    if (!isAfterGapDay)
+      return res.status(404).json({
+        message:
+          "Bạn chỉ được cập nhập tài khoản 7 ngày sau ngày cập nhật gần nhất",
+      });
     // Update fields if provided
     if (bank) {
       bankAccount.bank = bank;

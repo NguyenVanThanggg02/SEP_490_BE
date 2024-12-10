@@ -11,8 +11,10 @@ const transactionSchema = new Schema(
       type: Number,
       required: true,
     },
-    deductedAmount:{
+    fee: {
       type: Number,
+      required: false,
+      default: 0
     },
     description: {
       type: String,

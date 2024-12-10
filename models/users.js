@@ -72,7 +72,13 @@ const usersSchema = new Schema(
       type: Number,
       required: true,
       default: 0
-    }
+    },
+    otp: {
+      type: String,
+    },
+    otp_expired_time: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
