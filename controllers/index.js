@@ -9,19 +9,8 @@ import reasonsController from "./reasons.js";
 import sendEmailBookingCompleted from "./bookings.js";
 import messageController from "./message.js";
 import communityStandardsController from "./communityStandards.js";
-<<<<<<< HEAD
-<<<<<<< HEAD
-import notificationController from "./notificationController.js";
-import MessageController from "./MessageController.js";
-=======
 import SystemPropertiesController from "./SystemProperties.js";
 
->>>>>>> 71e836b58fd65e1a33dfbaf262b34ee837762728
-=======
-import notificationController from "./notificationController.js";
-import MessageController from "./MessageController.js";
-import SystemPropertiesController from "./SystemProperties.js";
->>>>>>> 5c42dae1fe8e8efd016484aa16f54adeb647c640
 export {
   userController,
   reviewController,
@@ -34,16 +23,5 @@ export {
   sendEmailBookingCompleted,
   messageController,
   communityStandardsController,
-<<<<<<< HEAD
-<<<<<<< HEAD
-  notificationController,
-  MessageController
-=======
   SystemPropertiesController
->>>>>>> 71e836b58fd65e1a33dfbaf262b34ee837762728
-=======
-  notificationController,
-  MessageController,
-  SystemPropertiesController
->>>>>>> 5c42dae1fe8e8efd016484aa16f54adeb647c640
 };
