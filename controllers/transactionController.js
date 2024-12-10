@@ -6,6 +6,7 @@ import {
   verifySignature,
   isSuccess,
 } from "../externals/vnpay.js";
+import SystemProrperties from "../models/systemPropertiesModel.js";
 import { TransactionsModel } from "../models/transactionsModel.js";
 import Users from "../models/users.js";
 
@@ -62,7 +63,9 @@ export const transactionCreate = async (req, res) => {
         type,
         status: "Khởi tạo",
         beneficiaryAccountNumber,
-        beneficiaryBankCode
+        beneficiaryBankCode,
+        fee: amount - Math.floor(amount * 95 / 100)
+
       });
       const adminList = await Users.find({ role: 1 });
       const userAvatar = user?.avatar || "https://cellphones.com.vn/sforum/wp-content/uploads/2023/10/avatar-trang-4.jpg";
@@ -250,7 +253,7 @@ export const getAllTransaction = async (req, res) => {
     const dataRes = transactionList.map((transaction) => {
       return {
         transactionId: transaction._id.toString(),
-        amount: transaction.amount,
+        amount: transaction.type === "Rút tiền" ? transaction.amount - (transaction.fee || 0) : transaction.amount,
         deductedAmount: transaction.deductedAmount,
         description: transaction.description,
         type: transaction.type,
@@ -326,7 +329,7 @@ export const adminGetAllTransaction = async (req, res) => {
           transaction.userId.phone,
         ].join("\n"),
         orderId: transaction.orderId,
-        amount: transaction.amount,
+        amount: transaction.type === "Rút tiền" ? transaction.amount - (transaction.fee || 0) : transaction.amount,
         description: transaction.description,
         type: transaction.type,
         status: transaction.status,
@@ -371,8 +374,10 @@ export const adminConfirmTransaction = async (req, res) => {
           transactionId,
           beneficiaryBankCode: transaction.beneficiaryBankCode, 
           beneficiaryAccountNumber: transaction.beneficiaryAccountNumber,
-          amount: deductedAmount, // Dùng số tiền đã giảm
-          qrUrl: `https://img.vietqr.io/image/${transaction.beneficiaryBankCode}-${transaction.beneficiaryAccountNumber}-compact2.jpg?amount=${deductedAmount}&addInfo=${transaction.description}&accountName=${transaction.userId.fullname}`
+          amount: transaction.amount - (transaction.fee || 0),
+          // qrUrl: `https://img.vietqr.io/image/${transaction.beneficiaryBankCode}-${transaction.beneficiaryAccountNumber}-compact2.jpg?amount=${deductedAmount}&addInfo=${transaction.description}&accountName=${transaction.userId.fullname}`
+          qrUrl: `https://img.vietqr.io/image/${transaction.beneficiaryBankCode}-${transaction.beneficiaryAccountNumber}-compact2.jpg?amount=${transaction.amount - (transaction.fee || 0)}&addInfo=${transaction.description}&accountName=${transaction.userId.fullname}`,
+
         });
         return;
       }
@@ -380,8 +385,24 @@ export const adminConfirmTransaction = async (req, res) => {
     
 
     if (result === "Đồng ý - Xác nhận") {
-      const deductedAmount = transaction.amount * 0.95;
-      await TransactionsModel.updateOne({_id: transactionId}, {status: "Thành công",deductedAmount})
+      // const deductedAmount = transaction.amount * 0.95;
+      await TransactionsModel.updateOne({_id: transactionId}, {status: "Thành công"})
+      const profitAmountRecord = await SystemProrperties.findOne({ code: "profit_amount" });
+      let profitAmount = transaction.fee || 0;
+      if (profitAmountRecord) {
+        let currentValue = Number(profitAmountRecord.value);
+        if (isNaN(currentValue)) {
+          currentValue = 0;
+        }
+        profitAmount += currentValue;
+      }
+      await SystemProrperties.updateOne(
+        { code: "profit_amount" },
+        { 
+          $set: { value: profitAmount } 
+        },
+        { upsert: true } 
+      );
       await notificationDao.saveAndSendNotification(
         transaction.userId._id.toString(),
         "Yêu cầu rút tiền của bạn đã được phê duyệt.",
