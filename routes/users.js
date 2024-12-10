@@ -20,6 +20,10 @@ const usersRouter = express.Router();
 usersRouter.put("/changepass/:username", userController.changePass);
 usersRouter.get("/", userController.getAllUsers);
 usersRouter.post("/forgot-password", userController.forgetPass);
+usersRouter.post("/confirm-password", userController.confirmPass);
+usersRouter.post("/confirm-otp", userController.confirmOtp);
+usersRouter.post("/resent-otp", userController.resentOtp);
+
 // Schema validation bằng Joi cho đăng ký người dùng
 const registerSchema = Joi.object({
   username: Joi.string().alphanum().min(3).max(30).required().messages({

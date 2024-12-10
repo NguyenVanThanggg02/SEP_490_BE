@@ -5,7 +5,7 @@ const systemPropertiesSchema = new Schema(
     code: {
       type: String,
       required: true,      
-      enum: ["system_account_balance"],
+      enum: ["system_account_balance", "profit_amount"],
     },
     value: {
       type: String,

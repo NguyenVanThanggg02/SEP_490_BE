@@ -3,9 +3,79 @@ import Users from "../models/users.js";
 import Spaces from "../models/spaces.js";
 import { TransactionsModel } from "../models/transactionsModel.js";
 import Booking from "../models/bookings.js";
+import SystemProrperties from "../models/systemPropertiesModel.js";
 
 export const getAllData = async (req, res) => {
   try {
+    // Profit========================================
+    const {profitFilter} = req.body
+    let profitFrom;
+    let profitTo;
+    if (profitFilter) {
+      profitFrom = dayjs(`${profitFilter.from.split('/').reverse().join('/')}/01`, 'YYYY/MM/DD').startOf('months')
+      profitTo = dayjs(`${profitFilter.to.split('/').reverse().join('/')}/01`, 'YYYY/MM/DD').endOf('months')
+    } else {
+      profitFrom = dayjs().subtract(6, 'month').startOf('months')
+      profitTo =  dayjs().endOf('month')
+    }
+    
+    let profitByDays = [];
+    
+    for (let i = profitFrom; i.isBefore(profitTo); i = i.add(1, "day")) {
+      profitByDays.push({
+        day: i.format("YYYY-MM-DD"),
+        profit: 0,
+      });
+    }
+    const profitQuery = await TransactionsModel.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: profitFrom.toDate(),
+            $lte: profitTo.toDate(),
+          },
+          type: "Rút tiền",          
+          status: "Thành công"
+        },
+      },
+      {
+        $group: {
+          _id: {
+            createdAt: {
+              $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+            },
+          },
+          profit:  { 
+            $sum: { $ifNull: ["$fee", 0] }
+          },
+        },
+      },
+      {
+        $sort: { "_id.createdAt": 1 },
+      },
+    ]);
+    profitByDays = profitByDays.map((profitByDay) => {
+      const newProfitByDay = {...profitByDay}
+      const profitOnDay = profitQuery.filter(profit => profit._id.createdAt === profitByDay.day);
+      if (profitOnDay && profitOnDay.length > 0) newProfitByDay.profit = profitOnDay[0].profit;
+      return newProfitByDay;
+    })
+    console.log(profitByDays)
+    const totalProfitAmount = await SystemProrperties.findOne({code: "profit_amount"})
+    
+    const profit = {
+      title: "Lợi nhuận",
+      total: totalProfitAmount ? totalProfitAmount.value : 0,
+      interval: "Lợi nhuận theo ngày",
+      data: [
+        {
+          
+        label: "Lợi nhuận",
+        data: profitByDays.map(profitByDay => profitByDay.profit)
+        },
+      ],
+      axis: profitByDays.map(profitByDay => dayjs(profitByDay.day).format('DD/MM/YY'))
+    }
     // User dashboard========================================
     let userByMonths = [];
     for (let i = 0; i < 12; i++) {
@@ -398,7 +468,7 @@ export const getAllData = async (req, res) => {
       axis: bookingByDays.map(booking => dayjs(booking.day).format('DD/MM/YY'))
     }
 
-    res.status(200).json({ user, space, transaction, spaceCensorship, bookingRentalType });
+    res.status(200).json({ profit,user, space, transaction, spaceCensorship, bookingRentalType });
   } catch (error) {
     console.log(error);
     res.status(500);
