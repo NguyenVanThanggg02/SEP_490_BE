@@ -26,7 +26,7 @@ const transactionSchema = new Schema(
     },
     type: {
       type: String,
-      enum: ["Nạp tiền", "Trừ tiền", "Cộng tiền", "Hoàn tiền", "Rút tiền"],
+      enum: ["Nạp tiền", "Trừ tiền", "Cộng tiền", "Hoàn tiền", "Rút tiền", "Tăng số dư ví admin", "Giảm số dư ví admin"],
       required: true,
     },
     status: {
