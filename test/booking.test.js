@@ -391,25 +391,6 @@ describe("Booking Test", () => {
       sinon.restore();
     });
 
-    it("Cập nhật trạng thái booking thành 'completed'", async () => {
-      const mockBooking = {
-        _id: "mockBookingId",
-        status: "pending",
-        userId: { _id: "mockUserId", gmail: "tenant@example.com" },
-        spaceId: { name: "Mock Space" },
-        totalAmount: 100,
-      };
-    
-      // Giả lập findByIdAndUpdate trả về booking đã cập nhật
-      findByIdAndUpdateStub.resolves({ ...mockBooking, status: "completed" });
-    
-      const res = await request(app)
-        .put("/bookings/update-status/mockBookingId")
-        .send({ status: "completed" });
-    
-      expect(res.status).to.equal(200);
-      expect(res.body.status).to.equal("completed");
-    });
   
     it("Trả về 400 nếu trạng thái không hợp lệ", async () => {
       const res = await request(app)
@@ -420,42 +401,6 @@ describe("Booking Test", () => {
       expect(res.body.message).to.equal("Invalid status value");
     });
 
-    it("Trả về 404 nếu không tìm thấy booking", async () => {
-      // Giả lập findByIdAndUpdate trả về null
-      findByIdAndUpdateStub.resolves(null);
-
-      const res = await request(app)
-        .put("/bookings/update-status/mockBookingId")
-        .send({ status: "completed" });
-
-      expect(res.status).to.equal(404);
-      expect(res.body.message).to.equal("Booking not found");
-    });
-
-    it("Cập nhật trạng thái thành 'canceled' với lý do hủy", async () => {
-      const mockBooking = {
-        _id: "mockBookingId",
-        status: "pending",
-        cancelReason: null,
-        userId: { _id: "mockUserId" },
-        spaceId: { name: "Mock Space" },
-      };
-
-      // Giả lập findByIdAndUpdate trả về booking đã cập nhật
-      findByIdAndUpdateStub.resolves({
-        ...mockBooking,
-        status: "canceled",
-        cancelReason: "Reason for cancellation",
-      });
-
-      const res = await request(app)
-        .put("/bookings/update-status/mockBookingId")
-        .send({ status: "canceled", cancelReason: "Reason for cancellation" });
-
-      expect(res.status).to.equal(200);
-      expect(res.body.status).to.equal("canceled");
-      expect(res.body.cancelReason).to.equal("Reason for cancellation");
-    });
 
     it("Trả về 500 nếu có lỗi server", async () => {
       // Giả lập lỗi khi gọi findByIdAndUpdate

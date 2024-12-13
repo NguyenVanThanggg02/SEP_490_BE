@@ -1,6 +1,6 @@
 import sinon from "sinon";
 import spaceController from "../controllers/spaces.js";
-import { notificationDao, spaceDao } from "../dao/index.js";
+import { notificationDao, spaceDao, userDao } from "../dao/index.js";
 import Spaces from "../models/spaces.js";
 import cloudinary from "../cloudinary.config.js";
 import express from 'express';
@@ -10,6 +10,7 @@ import mongoose from "mongoose";
 import spacesRouter from "../routes/spaces.js";
 import request from "supertest";
 import { expect } from 'chai';
+import { userController } from "../controllers/index.js";
 
 
 describe("Space Controller-Tests", () => {
@@ -1074,6 +1075,27 @@ describe("Space Controller-Tests", () => {
 
       expect(res.body.message).to.equal("Đã xảy ra lỗi khi chấp nhận post");
       expect(saveAndSendNotificationStub.called).to.be.false;
+    });
+  });
+
+  describe("get All Userrs", () => {
+    it("should return all users with status 200", async () => {
+      const mockUsers = [{ id: 1, username: "testuser" }];
+      sandbox.stub(userDao, "fetchAllUsers").resolves(mockUsers);
+
+      await userController.getAllUsers(req, res);
+
+      expect(res.status.calledWith(200)).to.be.true;
+      expect(res.json.calledWith(mockUsers)).to.be.true;
+    });
+
+    it("should handle errors and return status 500", async () => {
+      sandbox.stub(userDao, "fetchAllUsers").rejects(new Error("Database error"));
+
+      await userController.getAllUsers(req, res);
+
+      expect(res.status.calledWith(500)).to.be.true;
+      expect(res.json.calledWith({ error: "Error: Database error" })).to.be.true;
     });
   });
 });

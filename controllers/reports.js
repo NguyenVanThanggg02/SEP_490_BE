@@ -17,8 +17,8 @@ const getAllReports = async(req, res) =>{
 
 const createReports = async (req, res) => {
   try {
-    const { reasonId, userId, spaceId, customReason, } = req.body;
-    const report = await reportsDao.createReports(reasonId, userId, spaceId, customReason,);
+    const { reasonId, userId, spaceId, customReason,statusReport = "Chờ duyệt"  } = req.body;
+    const report = await reportsDao.createReports(reasonId, userId, spaceId, customReason,statusReport);
 
     const space = await Spaces.findById(spaceId);
     const user = await Users.findById(userId);
