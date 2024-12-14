@@ -97,7 +97,7 @@ usersRouter.post("/login", async (req, res, next) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       throw createError.Unauthorized(
-        "Username, Gmail, or password is incorrect"
+        "Tên người dùng, gmail hoặc mật khẩu không đúng"
       );
 
     // Tạo access token và refresh token
@@ -223,7 +223,7 @@ usersRouter.post("/login", async (req, res, next) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       throw createError.Unauthorized(
-        "Username, Gmail, or password is incorrect"
+        "Tên người dùng, gmail hoặc mật khẩu không đúng"
       );
 
     // Tạo access token và refresh token
