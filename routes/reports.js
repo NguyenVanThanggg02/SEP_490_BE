@@ -170,6 +170,10 @@ reportRouter.put("/reportstatus/:postId", async (req, res, next) => {
                 { new: true }
             );
         }
+        if (postSpace.reportCount >= 3) {
+            postSpace.spaceId.censorship = "Chờ duyệt";
+            await space.save();
+        }
 
         res.status(200).json(postSpace);
     } catch (error) {
@@ -221,9 +225,25 @@ reportRouter.put('/complaintaccept/:id', async (req, res) => {
         if (!report) {
             return res.status(404).json({ message: "Không tìm thấy báo cáo" });
         }
+        if (report.statusReport === "Chấp nhận") {
+            // Giảm reportCount đi 1
+            const space = await Spaces.findByIdAndUpdate(
+                report.spaceId._id,
+                { $inc: { reportCount: -1 } }, // Giảm reportCount
+                { new: true }
+            );
+
+            // Nếu reportCount < 3 và censorship đang là "Chờ duyệt", cập nhật lại trạng thái
+            if (space.reportCount < 3 && space.censorship === "Chờ duyệt") {
+                space.censorship = "Chấp nhận"; // Đặt lại trạng thái bài đăng
+                await space.save();
+            }
+        }
+        
 
         // Cập nhật trạng thái báo cáo là "Chấp nhận"
         report.statusComplaint = "Chấp nhận";
+        report.statusReport = "Từ chối";
         await report.save();
 
         return res.status(200).json({
@@ -232,6 +252,37 @@ reportRouter.put('/complaintaccept/:id', async (req, res) => {
         });
     } catch (error) {
         console.error("Error accepting report:", error);
+        return res.status(500).json({ message: "Đã xảy ra lỗi khi xử lý yêu cầu" });
+    }
+});
+
+reportRouter.put('/reportsrejectcomplaint/:id', async (req, res) => {
+    const { id } = req.params; // Lấy ID báo cáo từ URL
+    const { reportRejectionComplaint } = req.body; // Lấy lý do từ request body
+
+    if (!reportRejectionComplaint || !reportRejectionComplaint.trim()) {
+        return res.status(400).json({ message: "Lý do từ chối không được để trống" });
+    }
+
+    try {
+        // Tìm và cập nhật báo cáo
+        const report = await Reports.findById(id);
+
+        if (!report) {
+            return res.status(404).json({ message: "Không tìm thấy báo cáo" });
+        }
+
+        // Cập nhật trạng thái và lý do từ chối
+        report.statusComplaint = "Từ chối";
+        report.reportRejectionComplaint = reportRejectionComplaint.trim();
+        await report.save();
+
+        return res.status(200).json({
+            message: "Báo cáo đã bị từ chối",
+            data: report,
+        });
+    } catch (error) {
+        console.error("Error rejecting report complaint:", error);
         return res.status(500).json({ message: "Đã xảy ra lỗi khi xử lý yêu cầu" });
     }
 });
