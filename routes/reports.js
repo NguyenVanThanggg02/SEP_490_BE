@@ -47,6 +47,44 @@ reportRouter.get('/getreport/:id', async (req, res) => {
     }
 });
 
+reportRouter.put("/complaint/:id", async (req, res) => {
+    try {
+      const { id } = req.params; // Lấy ID từ params
+      const { complaint } = req.body; // Lấy complaint từ body
+  
+      // Kiểm tra nếu complaint rỗng
+      if (!complaint || complaint.trim() === "") {
+        return res.status(400).json({ message: "Complaint không được để trống." });
+      }
+  
+      // Tìm và cập nhật trường complaint của report theo ID
+      const updatedReport = await Reports.findByIdAndUpdate(
+        id,
+        { complaint: complaint.trim() }, // Cập nhật giá trị mới
+        { new: true } // Trả về document đã cập nhật
+      );
+  
+      // Nếu không tìm thấy report
+      if (!updatedReport) {
+        return res.status(404).json({ message: "Không tìm thấy report." });
+      }
+  
+      // Trả về kết quả thành công
+      res.status(200).json({
+        message: "Cập nhật complaint thành công.",
+        data: updatedReport,
+      });
+    } catch (error) {
+      console.error("Lỗi khi cập nhật complaint:", error.message);
+      res.status(500).json({
+        message: "Lỗi server khi cập nhật complaint.",
+        error: error.message,
+      });
+    }
+  });
+  
+
+
 
 //Chấp nhận report
 reportRouter.put("/reportstatus/:postId", async (req, res, next) => {

@@ -34,6 +34,10 @@ const reportsSchema = new Schema(
     },
     reportRejectionComplaint:{
       type: String,
+    },
+    complaint:{
+      type: String,
+      default: "",
     }
   },
   { timestamps: true }
