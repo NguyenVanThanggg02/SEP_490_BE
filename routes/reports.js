@@ -2,6 +2,7 @@ import express from "express";
 import { reportsController } from "../controllers/index.js";
 import Reports from "../models/reports.js";
 import { notificationDao } from "../dao/index.js";
+import Spaces from "../models/spaces.js";
 
 const reportRouter = express.Router();
 reportRouter.post("/", reportsController.createReports);
@@ -9,43 +10,43 @@ reportRouter.get("/", reportsController.getAllReports);
 
 reportRouter.get('/getreport/:id', async (req, res) => {
     const { id } = req.params;  // Lấy id từ URL params
-  
+
     try {
-      const report = await Reports.findById(id)
-        .populate('reasonId') // Populate trường reasonId nếu cần
-        .populate('userId') // Populate userId nếu cần
-        .populate({
-          path: 'spaceId', // Populate không gian
-          populate: [
-            {
-              path: 'userId', // Populate userId của không gian
-              select: 'fullname', // Lấy chỉ trường fullname của người dùng
-            },
-            {
-              path: 'appliancesId', // Populate appliancesId của không gian
-              select: 'name', // Lấy chỉ tên của tiện ích
-              populate: {
-                path: 'appliances', // Populate các tiện ích của không gian
-                select: 'name', // Lấy tên của tiện ích
-              },
-            },
-          ],
-        })
-        .exec();
-  
-      // Nếu không tìm thấy báo cáo, trả về 404
-      if (!report) {
-        return res.status(404).json({ message: 'Báo cáo không tìm thấy' });
-      }
-  
-      // Trả về báo cáo tìm thấy
-      res.status(200).json(report);
+        const report = await Reports.findById(id)
+            .populate('reasonId') // Populate trường reasonId nếu cần
+            .populate('userId') // Populate userId nếu cần
+            .populate({
+                path: 'spaceId', // Populate không gian
+                populate: [
+                    {
+                        path: 'userId', // Populate userId của không gian
+                        select: 'fullname', // Lấy chỉ trường fullname của người dùng
+                    },
+                    {
+                        path: 'appliancesId', // Populate appliancesId của không gian
+                        select: 'name', // Lấy chỉ tên của tiện ích
+                        populate: {
+                            path: 'appliances', // Populate các tiện ích của không gian
+                            select: 'name', // Lấy tên của tiện ích
+                        },
+                    },
+                ],
+            })
+            .exec();
+
+        // Nếu không tìm thấy báo cáo, trả về 404
+        if (!report) {
+            return res.status(404).json({ message: 'Báo cáo không tìm thấy' });
+        }
+
+        // Trả về báo cáo tìm thấy
+        res.status(200).json(report);
     } catch (error) {
-      console.error('Error:', error);
-      res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy báo cáo' });
+        console.error('Error:', error);
+        res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy báo cáo' });
     }
-  });
-  
+});
+
 
 //Chấp nhận report
 reportRouter.put("/reportstatus/:postId", async (req, res, next) => {
@@ -90,6 +91,13 @@ reportRouter.put("/reportstatus/:postId", async (req, res, next) => {
         //         `/spaces/${postSpace.spaceId._id.toString()}`
         //     );
         // }
+        if (statusReport === "Chấp nhận") {
+            await Spaces.findOneAndUpdate(
+                { _id: postSpace.spaceId._id },
+                { $inc: { reportCount: 1 } }, // Tăng reportCount thêm 1
+                { new: true }
+            );
+        }
 
         res.status(200).json(postSpace);
     } catch (error) {
@@ -97,6 +105,38 @@ reportRouter.put("/reportstatus/:postId", async (req, res, next) => {
         res.status(500).json({ message: "Đã xảy ra lỗi khi chấp nhận post" });
     }
 });
+
+reportRouter.put('/reportsreject/:id', async (req, res) => {
+    const { id } = req.params; // Lấy ID báo cáo từ URL
+    const { reportRejectionReason } = req.body; // Lấy lý do từ request body
+
+    if (!reportRejectionReason || !reportRejectionReason.trim()) {
+        return res.status(400).json({ message: "Lý do từ chối không được để trống" });
+    }
+
+    try {
+        // Tìm và cập nhật báo cáo
+        const report = await Reports.findById(id);
+
+        if (!report) {
+            return res.status(404).json({ message: "Không tìm thấy báo cáo" });
+        }
+
+
+        report.statusReport = "Từ chối";
+        report.reportRejectionReason = reportRejectionReason;
+        await report.save();
+
+        return res.status(200).json({
+            message: "Báo cáo đã bị từ chối",
+            data: report,
+        });
+    } catch (error) {
+        console.error("Error rejecting report:", error);
+        return res.status(500).json({ message: "Đã xảy ra lỗi khi xử lý yêu cầu" });
+    }
+});
+
 
 
 export default reportRouter;

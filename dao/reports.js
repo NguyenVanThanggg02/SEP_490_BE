@@ -39,13 +39,11 @@ const createReports = async (reasonId, userId, spaceId, customReason,statusRepor
       customReason,
       statusReport,
     }); 
-    if (statusReport === "Chấp nhận") {
-      await Spaces.findByIdAndUpdate(
-        spaceId,
-        { $inc: { reportCount: 1 } },
-        { new: true }
-      );
-    }
+      // await Spaces.findByIdAndUpdate(
+      //   spaceId,
+      // { $inc: { reportCount: 1 } },
+      //   { new: true }
+      // );
     return createReport;
   } catch (error) {
     throw new Error(error.toString());
