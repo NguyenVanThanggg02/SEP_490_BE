@@ -214,9 +214,11 @@ const updateSpace = async (req, res) => {
   try {
     const {
       name,
+      area,
       rulesId,
       pricePerHour,
       pricePerDay,
+      description,
       // pricePerWeek,
       pricePerMonth,
       images,
@@ -249,8 +251,10 @@ const updateSpace = async (req, res) => {
 
     const spaceData = {
       name,
+      area,
       pricePerHour,
       pricePerDay,
+      description,
       // pricePerWeek,
       pricePerMonth,
       images: formattedImages,
