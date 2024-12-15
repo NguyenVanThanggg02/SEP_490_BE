@@ -128,9 +128,9 @@ spaceRouter.get("/compare-spaces-differences", async (req, res) => {
       };
     }
 
-    if (space1.status !== space2.status) {
-      differences.status = { space1: space1.status, space2: space2.status };
-    }
+    // if (space1.status !== space2.status) {
+    //   differences.status = { space1: space1.status, space2: space2.status };
+    // }
 
     // nếu k khác
     if (Object.keys(differences).length === 0) {
@@ -172,7 +172,7 @@ spaceRouter.get("/compare-spaces", async (req, res) => {
         pricePerDay: space1.pricePerDay,
         // pricePerWeek: space1.pricePerWeek,
         pricePerMonth: space1.pricePerMonth,
-        status: space1.status,
+        // status: space1.status,
         images:
           space1.images && space1.images.length > 0 ? space1.images[0] : null,
           latLng: space1.latLng
@@ -187,7 +187,7 @@ spaceRouter.get("/compare-spaces", async (req, res) => {
         pricePerDay: space2.pricePerDay,
         // pricePerWeek: space2.pricePerWeek,
         pricePerMonth: space2.pricePerMonth,
-        status: space2.status,
+        // status: space2.status,
         latLng: space2.latLng
 
       },

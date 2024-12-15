@@ -180,10 +180,29 @@ class BookingDAO {
 
       let amount = 0;
 
-      if (booking.rentalType === 'hour' || booking.rentalType === 'day') {
-        amount = booking.totalAmount;
-      }
+      if (booking.rentalType === 'hour') {
+        const smallestSlot = booking.selectedSlots.reduce((smallest, current) => {
+            return !smallest || current.startTime < smallest.startTime
+                ? current
+                : smallest;
+        }, null);
 
+        const firstTimeBook = dayjs(
+            dayjs(booking.startDate).format("YYYY-MM-DD") +
+            " " +
+            smallestSlot.startTime
+        );
+
+        if (firstTimeBook.isAfter(dayjs().add(5, "hour"))) {
+            amount = booking.totalAmount;
+        } else {
+            return { isAllowCancel: false };
+        }
+    }
+
+    if (booking.rentalType === 'day') {
+        amount = booking.totalAmount;
+    }
       if (booking.rentalType === 'month') {
         if (dayjs(booking.startDate).isAfter(dayjs().add(7, 'day')) || dayjs(booking.startDate).isSame(dayjs().add(7, 'day'))) {
           // trc 7 ngay
@@ -213,20 +232,20 @@ class BookingDAO {
     const currentDate = dayjs();
     if (booking.rentalType === "hour") {
       const smallestSlot = booking.selectedSlots.reduce((smallest, current) => {
-        return !smallest || current.startTime < smallest.startTime
-          ? current
-          : smallest;
+          return !smallest || current.startTime < smallest.startTime
+              ? current
+              : smallest;
       }, null);
 
       const firstTimeBook = dayjs(
-        dayjs(booking.startDate).format("YYYY-MM-DD") +
+          dayjs(booking.startDate).format("YYYY-MM-DD") +
           " " +
           smallestSlot.startTime
       );
-      if (firstTimeBook.isAfter(currentDate.add(24, "hour")) || firstTimeBook.isSame(currentDate.add(24, "hour"))) {
-        return true;
+      if (firstTimeBook.isAfter(currentDate.add(5, "hour"))) {
+          return true;
       }
-    }
+  }
     if (booking.rentalType === "day") {
       if (dayjs(booking.startDate).isAfter(currentDate.add(1, "day"))  || dayjs(booking.startDate).isSame(currentDate.add(1, "day"))) {
         return true;
