@@ -170,6 +170,8 @@ async function plusWeek() {
 async function plusMonth() {
   
   const now = new Date();
+  console.log(now);
+  
   try {
     const bookingProcessList = await Bookings.find({
       // ownerApprovalStatus: "accepted",
@@ -181,6 +183,8 @@ async function plusMonth() {
       .populate("spaceId")
       .populate("refundTransId")
       .populate("plusTransId");
+    console.log(bookingProcessList);
+      
     bookingProcessList.forEach(async (bookingProcess) => {
       if (bookingProcess.refundTransId) {
         let amount = Number(bookingProcess.totalAmount);

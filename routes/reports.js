@@ -164,16 +164,18 @@ reportRouter.put("/reportstatus/:postId", async (req, res, next) => {
         //     );
         // }
         if (statusReport === "Chấp nhận") {
-            await Spaces.findOneAndUpdate(
+            const space = await Spaces.findOneAndUpdate(
                 { _id: postSpace.spaceId._id },
                 { $inc: { reportCount: 1 } }, // Tăng reportCount thêm 1
                 { new: true }
             );
+            if (space.reportCount >= 3) {
+                space.censorship = "Chờ duyệt";
+                await space.save();
+            }
         }
-        if (postSpace.reportCount >= 3) {
-            postSpace.spaceId.censorship = "Chờ duyệt";
-            await space.save();
-        }
+        
+
 
         res.status(200).json(postSpace);
     } catch (error) {
