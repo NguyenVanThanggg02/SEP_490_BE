@@ -21,10 +21,10 @@ const createReports = async (req, res) => {
     const report = await reportsDao.createReports(reasonId, userId, spaceId, customReason,statusReport);
     
      // Kiểm tra xem người dùng đã báo cáo không gian này chưa
-     const existingReport = await reportsDao.findReportByUserAndSpace(userId, spaceId);
-     if (existingReport) {
-       return res.status(400).json({ message: "Bạn đã báo cáo không gian này trước đó rồi." });
-     }
+    //  const existingReport = await reportsDao.findReportByUserAndSpace(userId, spaceId);
+    //  if (existingReport) {
+    //    return res.status(400).json({ message: "Bạn đã báo cáo không gian này trước đó rồi." });
+    //  }
 
 
     const space = await Spaces.findById(spaceId);
@@ -48,7 +48,9 @@ const createReports = async (req, res) => {
     await notificationDao.saveAndSendNotification(
       space.userId.toString(),
       `${user?.fullname} đã tố cáo space ${space?.name}`,
-      userAvatar
+      userAvatar,
+      "/report"
+
     );
     res.status(200).json(report);
   } catch (error) {
