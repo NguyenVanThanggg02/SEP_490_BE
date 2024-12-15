@@ -263,7 +263,7 @@ bookingRouter.get("/spaces/:userId", async (req, res, next) => {
       .populate("userId")
       .exec();
     const filteredBookings = bookings.filter(
-      (booking) => booking.spaceId.userId.toString() === userId
+      (booking) => booking?.spaceId?.userId?.toString() === userId
     );
     if (filteredBookings.length === 0) {
       return res

@@ -6,6 +6,7 @@ import {
   verifySignature,
   isSuccess,
 } from "../externals/vnpay.js";
+import SystemProrperties from "../models/systemPropertiesModel.js";
 import { TransactionsModel } from "../models/transactionsModel.js";
 import Users from "../models/users.js";
 
@@ -272,7 +273,10 @@ export const getAllTransaction = async (req, res) => {
     const dataRes = transactionList.map((transaction) => {
       return {
         transactionId: transaction._id.toString(),
-        amount: transaction.amount,
+        amount:
+          transaction.type === "Rút tiền"
+            ? transaction.amount - (transaction.fee || 0)
+            : transaction.amount,
         deductedAmount: transaction.deductedAmount,
         description: transaction.description,
         type: transaction.type,

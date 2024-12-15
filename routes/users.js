@@ -5,7 +5,7 @@ import express from "express";
 import bcrypt from "bcrypt";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../cloudinary.config.js";
-import multer from 'multer';
+import multer from "multer";
 import {
   signAccessToken,
   signRefreshToken,
@@ -20,6 +20,10 @@ const usersRouter = express.Router();
 usersRouter.put("/changepass/:username", userController.changePass);
 usersRouter.get("/", userController.getAllUsers);
 usersRouter.post("/forgot-password", userController.forgetPass);
+usersRouter.post("/confirm-password", userController.confirmPass);
+usersRouter.post("/confirm-otp", userController.confirmOtp);
+usersRouter.post("/resent-otp", userController.resentOtp);
+
 // Schema validation bằng Joi cho đăng ký người dùng
 const registerSchema = Joi.object({
   username: Joi.string().alphanum().min(3).max(30).required().messages({
@@ -28,15 +32,22 @@ const registerSchema = Joi.object({
     "string.min": `"username" phải có ít nhất 3 ký tự`,
     "string.max": `"username" không được vượt quá 30 ký tự`,
   }),
-  password: Joi.string().min(8).required().messages({
+  password: Joi.string().min(6).required().messages({
     "string.empty": `"password" không được bỏ trống`,
-    "string.min": `"password" phải có ít nhất 8 ký tự`,
+    "string.min": `"password" phải có ít nhất 6 ký tự`,
     "any.required": `"password" là bắt buộc`,
   }),
-
   gmail: Joi.string().email().required().messages({
     "string.email": `"gmail" phải đúng định dạng email`,
     "any.required": `"gmail" là bắt buộc`,
+  }),
+  fullname: Joi.string().required().messages({
+    "string.empty": `"fullname" không được bỏ trống`,
+    "any.required": `"fullname" là bắt buộc`,
+  }),
+  phone: Joi.string().required().messages({
+    "string.empty": `"phone" không được bỏ trống`,
+    "any.required": `"phone" là bắt buộc`,
   }),
 });
 
@@ -55,17 +66,20 @@ const loginSchema = Joi.object({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'spacehub/img_user', // Thư mục trên Cloudinary
-    allowed_formats: ['jpg', 'png', 'webp', 'jfif'], // Định dạng được phép
+    folder: "spacehub/img_user", // Thư mục trên Cloudinary
+    allowed_formats: ["jpg", "png", "webp", "jfif"], // Định dạng được phép
   },
 });
 
 // Khởi tạo multer với storage
 const upload = multer({ storage: storage });
 
-
-usersRouter.post('/upload-image', upload.single('imageUser'), userController.uploadImages);
-usersRouter.delete('/:id/remove-image', userController.removeUserImage);
+usersRouter.post(
+  "/upload-image",
+  upload.single("imageUser"),
+  userController.uploadImages
+);
+usersRouter.delete("/:id/remove-image", userController.removeUserImage);
 
 usersRouter.post("/login", async (req, res, next) => {
   try {
@@ -154,41 +168,61 @@ usersRouter.put("/def/:userId", async (req, res, next) => {
 });
 
 // Đăng ký người dùng mới
+// Đăng ký người dùng mới
 usersRouter.post("/register", async (req, res, next) => {
   try {
+    // Validate dữ liệu nhập vào
     const { error } = registerSchema.validate(req.body);
     if (error) {
-      throw createError.BadRequest(error.details[0].message); // Trả về lỗi validation
+      return res.status(400).json({ message: error.details[0].message });
     }
 
-    const { username, password, gmail } = req.body;
+    const { username, password, gmail, fullname, phone } = req.body;
 
-    const existingUserByUsername = await Users.findOne({ username }).exec();
-    if (existingUserByUsername)
-      throw createError.Conflict("Tên người dùng đã tồn tại");
+    // Kiểm tra tên người dùng đã tồn tại chưa
+    const existingUserByUsername = await Users.findOne({ username });
+    if (existingUserByUsername) {
+      return res.status(409).json({ message: "Tên người dùng đã tồn tại" }); // HTTP 409 Conflict
+    }
 
-    const existingUserByGmail = await Users.findOne({ gmail }).exec();
-    if (existingUserByGmail)
-      throw createError.Conflict("Gmail đã được đăng ký");
+    // Kiểm tra email đã được sử dụng chưa
+    const existingUserByGmail = await Users.findOne({ gmail });
+    if (existingUserByGmail) {
+      return res.status(409).json({ message: "Email đã được đăng ký" });
+    }
 
-    const hashPass = await bcrypt.hash(
-      password,
-      parseInt(process.env.PASSWORD_SECRET)
-    );
+    // Mã hóa mật khẩu
+    const hashPass = await bcrypt.hash(password, 10); // Sử dụng giá trị saltRounds cố định
 
+    // Tạo người dùng mới
     const newUser = new Users({
       username,
       gmail,
       password: hashPass,
+      fullname,
+      phone,
     });
 
+    // Lưu người dùng vào cơ sở dữ liệu
     const savedUser = await newUser.save();
 
+    // Tạo access token
     const accessToken = await signAccessToken(savedUser._id);
 
-    res.status(201).send({ accessToken, newUser });
+    // Trả về phản hồi
+    return res.status(201).json({
+      message: "Đăng ký thành công",
+      accessToken,
+      user: {
+        id: savedUser._id,
+        username: savedUser.username,
+        fullname: savedUser.fullname,
+        email: savedUser.gmail,
+      },
+    });
   } catch (error) {
-    next(error);
+    console.error("Error during user registration:", error);
+    next(createError(500, "Có lỗi xảy ra trong quá trình đăng ký"));
   }
 });
 

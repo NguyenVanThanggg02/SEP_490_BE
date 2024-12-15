@@ -4,7 +4,7 @@ const usersSchema = new Schema(
   {
     fullname: {
       type: String,
-      default: "",
+      require: true,
     },
     username: {
       type: String,
@@ -71,8 +71,14 @@ const usersSchema = new Schema(
     balanceAmount: {
       type: Number,
       required: true,
-      default: 0
-    }
+      default: 0,
+    },
+    otp: {
+      type: String,
+    },
+    otp_expired_time: {
+      type: Date,
+    },
   },
   {
     timestamps: true,

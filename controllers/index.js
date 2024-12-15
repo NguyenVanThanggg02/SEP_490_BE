@@ -9,6 +9,7 @@ import reasonsController from "./reasons.js";
 import sendEmailBookingCompleted from "./bookings.js";
 import messageController from "./message.js";
 import communityStandardsController from "./communityStandards.js";
+import SystemPropertiesController from "./SystemProperties.js";
 
 export {
   userController,
