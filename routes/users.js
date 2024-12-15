@@ -20,6 +20,10 @@ const usersRouter = express.Router();
 usersRouter.put("/changepass/:username", userController.changePass);
 usersRouter.get("/", userController.getAllUsers);
 usersRouter.post("/forgot-password", userController.forgetPass);
+usersRouter.post("/confirm-password", userController.confirmPass);
+usersRouter.post("/confirm-otp", userController.confirmOtp);
+usersRouter.post("/resent-otp", userController.resentOtp);
+
 // Schema validation bằng Joi cho đăng ký người dùng
 const registerSchema = Joi.object({
   username: Joi.string().alphanum().min(3).max(30).required().messages({
@@ -93,7 +97,7 @@ usersRouter.post("/login", async (req, res, next) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       throw createError.Unauthorized(
-        "Username, Gmail, or password is incorrect"
+        "Tên người dùng, gmail hoặc mật khẩu không đúng"
       );
 
     // Tạo access token và refresh token
@@ -219,7 +223,7 @@ usersRouter.post("/login", async (req, res, next) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       throw createError.Unauthorized(
-        "Username, Gmail, or password is incorrect"
+        "Tên người dùng, gmail hoặc mật khẩu không đúng"
       );
 
     // Tạo access token và refresh token

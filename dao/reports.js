@@ -30,6 +30,15 @@ const fetchAllReports = async () => {
   }
 };
 
+const findReportByUserAndSpace = async (userId, spaceId) => {
+  try {
+    return await Reports.findOne({ userId, spaceId }).lean();
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
 const createReports = async (reasonId, userId, spaceId, customReason,statusReport = "Chờ duyệt") => {
   try {
     const createReport = await Reports.create({
@@ -45,4 +54,4 @@ const createReports = async (reasonId, userId, spaceId, customReason,statusRepor
   }
 };
 
-export default { createReports, fetchAllReports };
+export default { createReports, fetchAllReports,findReportByUserAndSpace };

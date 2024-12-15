@@ -60,6 +60,10 @@ const createReview = async (req, res) => {
     if (!booking) {
       return res.status(404).json({ message: "Booking space not found" });
     }
+    const existingReview = await Reviews.findOne({ userId, spaceId }).lean();
+    if (existingReview) {
+      return res.status(400).json({ message: "Bạn đã đánh giá không gian này trước đó rồi !!!" });
+    }
 
     const newReview = await Reviews.create({ text, rating, spaceId, userId });
     await Spaces.findByIdAndUpdate(spaceId, {

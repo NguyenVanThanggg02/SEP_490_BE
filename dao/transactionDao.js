@@ -79,4 +79,32 @@ async function transferMoneyBooking(userId, type, status, amount, description, o
   }
 }
 
-export const transactionDao = { save, transferMoneyBooking };
+const getWalletAvailableAmount = async () => {
+  const type1 = await TransactionsModel.aggregate([
+    {
+      $match: { type: "Tăng số dư ví admin" },
+    },
+    {
+      $group: {
+        _id: null,
+        totalAmount: { $sum: "$amount" },
+      },
+    },
+  ]);
+
+  const type2 = await TransactionsModel.aggregate([
+    {
+      $match: { type: "Giảm số dư ví admin" },
+    },
+    {
+      $group: {
+        _id: null,
+        totalAmount: { $sum: "$amount" },
+      },
+    },
+  ]);
+  const incomeWallet = type1 && type1.length > 0 ? type1[0].totalAmount : 0
+  const outcomeWallet = type2 && type2.length > 0 ? type2[0].totalAmount : 0
+  return incomeWallet - outcomeWallet;
+}
+export const transactionDao = { save, transferMoneyBooking,getWalletAvailableAmount };

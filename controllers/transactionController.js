@@ -6,6 +6,7 @@ import {
   verifySignature,
   isSuccess,
 } from "../externals/vnpay.js";
+import SystemProrperties from "../models/systemPropertiesModel.js";
 import { TransactionsModel } from "../models/transactionsModel.js";
 import Users from "../models/users.js";
 
@@ -62,7 +63,9 @@ export const transactionCreate = async (req, res) => {
         type,
         status: "Khởi tạo",
         beneficiaryAccountNumber,
-        beneficiaryBankCode
+        beneficiaryBankCode,
+        fee: amount - Math.floor(amount * 95 / 100)
+
       });
       const adminList = await Users.find({ role: 1 });
       const userAvatar = user?.avatar || "https://cellphones.com.vn/sforum/wp-content/uploads/2023/10/avatar-trang-4.jpg";
@@ -250,7 +253,7 @@ export const getAllTransaction = async (req, res) => {
     const dataRes = transactionList.map((transaction) => {
       return {
         transactionId: transaction._id.toString(),
-        amount: transaction.amount,
+        amount: transaction.type === "Rút tiền" ? transaction.amount - (transaction.fee || 0) : transaction.amount,
         deductedAmount: transaction.deductedAmount,
         description: transaction.description,
         type: transaction.type,
@@ -273,7 +276,7 @@ export const getAllTransaction = async (req, res) => {
 
 export const adminGetAllTransaction = async (req, res) => {
   try {
-    const { searchParams, startTime, endTime, typeOfTransaction } = req.query;
+    const { searchParams, startTime, endTime, typeOfTransaction, page = 1, limit = 10 } = req.query;
     const searchQuery = {};
     if (searchParams) {
       searchQuery['$or'] = [
@@ -290,6 +293,8 @@ export const adminGetAllTransaction = async (req, res) => {
 
     if (typeOfTransaction && typeOfTransaction !== "Tất cả") {
       searchQuery["type"] = typeOfTransaction;
+    } else {
+      searchQuery["type"] = { $in: ["Nạp tiền", "Trừ tiền", "Cộng tiền", "Hoàn tiền", "Rút tiền"] };
     }
 
     if (startTime && endTime) {
@@ -312,27 +317,37 @@ export const adminGetAllTransaction = async (req, res) => {
         path: "userId",
         select: 'avatar fullname gmail phone'  // Only select these fields from the User model
       })
+      .skip((page - 1) * limit)
+      .limit(limit)
       .sort({
         createdAt: -1,
       })
       .exec();
+    const totalElement = await TransactionsModel.countDocuments(searchQuery);
     const dataRes = transactionList.map((transaction) => {
       return {
         transactionId: transaction._id.toString(),
+        userInfoAvatar: [transaction.userId.avatar].join("\n"),
         userInfo: [
           transaction.userId.fullname,
           transaction.userId.gmail,
           transaction.userId.phone,
         ].join("\n"),
         orderId: transaction.orderId,
-        amount: transaction.amount,
+        amount: transaction.type === "Rút tiền" ? transaction.amount - (transaction.fee || 0) : transaction.amount,
         description: transaction.description,
         type: transaction.type,
         status: transaction.status,
         createdAt: transaction.createdAt.toLocaleString(),
       };
     });
-    res.status(200).json({ transactionList: dataRes });
+    res.status(200).json({
+      transactionList: dataRes,
+      pagination: {
+        totalPage: Math.floor(totalElement / limit) + 1,
+        totalElement,
+      },
+    });
   } catch (error) {
     console.log(error);
     res.status(400).json({ message: "bad request" });
@@ -370,8 +385,9 @@ export const adminConfirmTransaction = async (req, res) => {
           transactionId,
           beneficiaryBankCode: transaction.beneficiaryBankCode, 
           beneficiaryAccountNumber: transaction.beneficiaryAccountNumber,
-          amount: deductedAmount, // Dùng số tiền đã giảm
-          qrUrl: `https://img.vietqr.io/image/${transaction.beneficiaryBankCode}-${transaction.beneficiaryAccountNumber}-compact2.jpg?amount=${deductedAmount}&addInfo=${transaction.description}&accountName=${transaction.userId.fullname}`
+          amount: transaction.amount - (transaction.fee || 0),
+          // qrUrl: `https://img.vietqr.io/image/${transaction.beneficiaryBankCode}-${transaction.beneficiaryAccountNumber}-compact2.jpg?amount=${deductedAmount}&addInfo=${transaction.description}&accountName=${transaction.userId.fullname}`
+          qrUrl: `https://img.vietqr.io/image/${transaction.beneficiaryBankCode}-${transaction.beneficiaryAccountNumber}-compact2.jpg?amount=${transaction.amount - (transaction.fee || 0)}&addInfo=${transaction.description}&accountName=${transaction.userId.fullname}`,
         });
         return;
       }
@@ -379,8 +395,33 @@ export const adminConfirmTransaction = async (req, res) => {
     
 
     if (result === "Đồng ý - Xác nhận") {
-      const deductedAmount = transaction.amount * 0.95;
-      await TransactionsModel.updateOne({_id: transactionId}, {status: "Thành công",deductedAmount})
+      await TransactionsModel.updateOne({_id: transactionId}, {status: "Thành công"})
+
+      await transactionDao.save({
+        userId: transaction.userId,
+        amount: transaction.fee,
+        description: `Cộng lợi nhuận từ giao dịch rút tiền ${transaction.orderId}`,
+        orderId:  "SYSTEM" + new Date().getTime(),
+        type: "Tăng số dư ví admin",
+        status: "Thành công",
+      });
+
+      const profitAmountRecord = await SystemProrperties.findOne({ code: "profit_amount" });
+      let profitAmount = transaction.fee || 0;
+      if (profitAmountRecord) {
+        let currentValue = Number(profitAmountRecord.value);
+        if (isNaN(currentValue)) {
+          currentValue = 0;
+        }
+        profitAmount += currentValue;
+      }
+      await SystemProrperties.updateOne(
+        { code: "profit_amount" },
+        { 
+          $set: { value: profitAmount } 
+        },
+        { upsert: true } 
+      );
       await notificationDao.saveAndSendNotification(
         transaction.userId._id.toString(),
         "Yêu cầu rút tiền của bạn đã được phê duyệt.",
@@ -409,6 +450,106 @@ export const adminConfirmTransaction = async (req, res) => {
       return
     }
 
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({ message: "bad request" });
+  }
+};
+export const adminWalletTransaction = async (req, res) => {
+  try {
+    const { searchParams, startTime, endTime, typeOfTransaction, page = 1, limit = 10  } = req.query;
+    const searchQuery = {};
+    if (searchParams) {
+      searchQuery["$or"] = [
+        { orderId: new RegExp(searchParams, "i") },
+        { description: new RegExp(searchParams, "i") },
+        { "userId.fullname": new RegExp(searchParams, "i") },
+        { "userId.gmail": new RegExp(searchParams, "i") },
+        { "user.phone": new RegExp(searchParams, "i") },
+      ];
+    }
+
+    if (typeOfTransaction && typeOfTransaction !== "Tất cả") {
+      searchQuery["type"] = typeOfTransaction;
+    } else {
+      searchQuery["type"] = { $in: ["Tăng số dư ví admin", "Giảm số dư ví admin"] };
+    }
+
+    if (startTime && endTime) {
+      searchQuery["createdAt"] = {
+        $gte: new Date(startTime).setHours(0, 0, 0, 0),
+        $lte: new Date(endTime).setHours(23, 59, 59, 999),
+      };
+    } else if (startTime) {
+      searchQuery["createdAt"] = {
+        $gte: new Date(startTime).setHours(0, 0, 0, 0),
+      };
+    } else if (endTime) {
+      searchQuery["createdAt"] = {
+        $lte: new Date(endTime).setHours(23, 59, 59, 999),
+      };
+    }
+
+    const transactionList = await TransactionsModel.find(searchQuery)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .sort({
+        createdAt: -1,
+      })
+      .exec();
+    const totalElement = await TransactionsModel.countDocuments(searchQuery);
+    const dataRes = transactionList.map((transaction) => {
+      return {
+        transactionId: transaction._id.toString(),
+        orderId: transaction.orderId,
+        amount: transaction.amount,
+        description: transaction.description,
+        type: transaction.type,
+        createdAt: transaction.createdAt.toLocaleString(),
+      };
+    });
+    const availableAmount = await transactionDao.getWalletAvailableAmount();
+    res.status(200).json({
+      availableAmount: availableAmount,
+      transactionList: dataRes,
+      pagination: {
+        totalPage: Math.floor(totalElement / limit) + 1,
+        totalElement,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({ message: "bad request" });
+  }
+};
+
+export const admiWithdrawTransaction = async (req, res) => {
+  try {
+    const { amount, userId  } = req.body;
+
+    const availableAmount = await transactionDao.getWalletAvailableAmount();
+
+    if (isNaN(Number(amount)) || Number(amount) <= 0) {
+      res.status(400).json({ message: "Số tiền không hợp lệ" });
+      return;      
+    }
+
+    if (Number(amount) > availableAmount) {
+      res.status(400).json({ message: "Ví không đủ số dư" });
+      return;      
+    }
+
+    await transactionDao.save({
+      userId,
+      amount,
+      description: `Nhận tiền từ ví Admin`,
+      orderId: "SYSTEM" + new Date().getTime(),
+      type: "Giảm số dư ví admin",
+      status: "Thành công",
+    });   
+
+    res.status(200).json({ message: "Nhận tiền thành công" });
+    return;
   } catch (error) {
     console.log(error);
     res.status(400).json({ message: "bad request" });
