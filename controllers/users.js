@@ -100,7 +100,7 @@ const forgetPass = async (req, res) => {
           <h2 style="color: #4CAF50;">Đặt lại mật khẩu</h2>
           <p>Xin chào <b>${user.fullname}</b> !!!</p>
           <p>Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu của bạn tại SpaceHub. Nhấp vào nút bên dưới để đặt lại mật khẩu của bạn:</p>
-          <a href="http://localhost:3000/reset-password/${user._id}/${token}" 
+          <a href="https://spacehub.site/reset-password/${user._id}/${token}" 
              style="display: inline-block; background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-size: 16px;">
             Đặt lại mật khẩu
           </a>
