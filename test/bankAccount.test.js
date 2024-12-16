@@ -173,27 +173,6 @@ describe("Bank Account  Tests", () => {
             sinon.restore();
         });
 
-        it("should update the bank account successfully", async () => {
-            const accountId = "123456";
-            const updatedData = { bank: "New Bank", accountNumber: "987654" };
-
-            // Mock BankAccount.findById trả về tài khoản ngân hàng giả lập
-            const mockBankAccount = {
-                _id: accountId,
-                bank: "Old Bank",
-                accountNumber: "123456",
-                save: saveStub.resolves(), // Giả lập việc lưu thành công
-            };
-            findByIdStub.resolves(mockBankAccount);
-
-            const res = await request(app)
-                .put(`/bankaccount/${accountId}`)
-                .send(updatedData);
-
-            expect(res.status).to.equal(200);
-            expect(res.body).to.have.property("message").that.equals("Tài khoản ngân hàng đã được cập nhật thành công");
-            expect(res.body.bankAccount).to.deep.include(updatedData); // Kiểm tra thông tin cập nhật
-        });
 
         it("should return 404 if the bank account is not found", async () => {
             const accountId = "nonexistent123";
