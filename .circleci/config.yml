@@ -1,15 +1,13 @@
 version: 2.1
 
-# Define reusable jobs, commands, and workflows
 jobs:
-  # Job to install dependencies and run tests
 
   install_and_zip:
     docker:
-      - image: cimg/node:22.12.0  # You can choose your preferred Node.js version
+      - image: cimg/node:22.12.0  
     working_directory: ~/repo
     steps:
-      - checkout  # Checks out your source code
+      - checkout 
       - run:
           name: Install dependencies
           command: |
@@ -25,7 +23,7 @@ jobs:
 
   deploy:
     docker:
-      - image: circleci/python:3.8  # Python is needed for SSH commands (use any image that includes SSH)
+      - image: circleci/python:3.8 
     working_directory: ~/repo
     steps:
       - checkout
@@ -44,28 +42,33 @@ jobs:
           name: Transfer ZIP file to server using SCP
           command: |
             # Use sshpass for password-based SCP transfer
-            sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@103.179.191.223 "rm -rf /root/deploy/be/*"
+            sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@103.179.191.223 "rm -rf /root/deploy/be && mkdir /root/deploy/be"
             sshpass -p "$SSH_PASSWORD" scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null app.zip root@103.179.191.223:/root/deploy/be
       - run:
-          name: Create deploy script on CircleCI and transfer to VPS
+          name: Deploy
           command: |
             sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@103.179.191.223 '
               export NVM_DIR="$HOME/.nvm";
-              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh";  # Load nvm
-              npm install -g pm2;  # Install pm2 globally (if not installed yet)
+              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"; 
+              npm install -g pm2;  
               cd /root/deploy/be;
               unzip -o app.zip;
-              pm2 reload be;  # Reload your app with pm2 (or replace with your app name)
+              pm2 reload be;  
             '
 
 workflows:
   version: 2
   deploy:
     jobs:
-      - install_and_zip
+      - install_and_zip:
+          filters:
+            branches:
+              only:
+                - main
       - deploy:
           requires:
             - install_and_zip
-      # - deploy:
-      #     requires:
-      #       - install_and_test  # Ensure tests pass before deploying
+          filters:
+            branches:
+              only:
+                - main 
