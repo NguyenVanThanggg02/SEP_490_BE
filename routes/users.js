@@ -32,15 +32,23 @@ const registerSchema = Joi.object({
     "string.min": `"username" phải có ít nhất 3 ký tự`,
     "string.max": `"username" không được vượt quá 30 ký tự`,
   }),
-  password: Joi.string().min(8).required().messages({
+  password: Joi.string().min(6).required().messages({
     "string.empty": `"password" không được bỏ trống`,
-    "string.min": `"password" phải có ít nhất 8 ký tự`,
+    "string.min": `"password" phải có ít nhất 6 ký tự`,
     "any.required": `"password" là bắt buộc`,
   }),
 
   gmail: Joi.string().email().required().messages({
     "string.email": `"gmail" phải đúng định dạng email`,
     "any.required": `"gmail" là bắt buộc`,
+  }),
+  fullname: Joi.string().required().messages({
+    "string.empty": `"fullname" không được bỏ trống`,
+    "any.required": `"fullname" là bắt buộc`,
+  }),
+  phone: Joi.string().required().messages({
+    "string.empty": `"phone" không được bỏ trống`,
+    "any.required": `"phone" là bắt buộc`,
   }),
 });
 
@@ -162,35 +170,47 @@ usersRouter.post("/register", async (req, res, next) => {
   try {
     const { error } = registerSchema.validate(req.body);
     if (error) {
-      throw createError.BadRequest(error.details[0].message); // Trả về lỗi validation
+      return res.status(400).json({ message: error.details[0].message });
     }
 
-    const { username, password, gmail } = req.body;
+    const { username, password, gmail, fullname, phone } = req.body;
 
-    const existingUserByUsername = await Users.findOne({ username }).exec();
-    if (existingUserByUsername)
-      throw createError.Conflict("Tên người dùng đã tồn tại");
-
+    const existingUserByUsername = await Users.findOne({ username });
+    if (existingUserByUsername) {
+      return res.status(409).json({ message: "Tên người dùng đã tồn tại" }); // HTTP 409 Conflict
+    }
     const existingUserByGmail = await Users.findOne({ gmail }).exec();
     if (existingUserByGmail)
       throw createError.Conflict("Gmail đã được đăng ký");
 
-    const hashPass = await bcrypt.hash(
-      password,
-      parseInt(process.env.PASSWORD_SECRET)
-    );
+    // const hashPass = await bcrypt.hash(
+    //   password,
+    //   parseInt(process.env.PASSWORD_SECRET)
+    // );
+    const hashPass = await bcrypt.hash(password, 10);
 
     const newUser = new Users({
       username,
       gmail,
       password: hashPass,
+      fullname,
+      phone,
     });
 
     const savedUser = await newUser.save();
 
     const accessToken = await signAccessToken(savedUser._id);
 
-    res.status(201).send({ accessToken, newUser });
+    return res.status(201).json({
+      message: "Đăng ký thành công",
+      accessToken,
+      user: {
+        id: savedUser._id,
+        username: savedUser.username,
+        fullname: savedUser.fullname,
+        email: savedUser.gmail,
+      },
+    });
   } catch (error) {
     next(error);
   }

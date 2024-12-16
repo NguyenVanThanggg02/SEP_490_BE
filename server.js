@@ -146,7 +146,8 @@ const server = createServer(app);
 // Thiết lập Socket.io sử dụng HTTP server
 const io = new initSocket(server, {
   cors: {
-    origin: "http://localhost:3000", // Allow frontend từ localhost:3000
+    // origin: "http://localhost:3000", // Allow frontend từ localhost:3000
+    origin: "*",
   },
 });
 

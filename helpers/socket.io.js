@@ -8,7 +8,7 @@ let userList = [];
 export function initSocket(server) {
   io = new Server(server, {
     cors: {
-      origin: 'http://localhost:3000', // Allow frontend access
+      origin: ['http://localhost:3000', 'https://spacehub.site'],
       methods: ['GET', 'POST'],
     },
   });
