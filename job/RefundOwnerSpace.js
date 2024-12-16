@@ -39,7 +39,16 @@ async function plusHour() {
       //   ],
       // },
     })
-      .populate("spaceId")
+
+
+      .populate({
+            path: 'spaceId', // Populate không gian
+            populate:
+                {
+                    path: 'userId', // Populate userId của không gian
+                    select: 'fullname', // Lấy chỉ trường fullname của người dùng
+                }
+        })
       .populate("refundTransId");
       console.log(bookingProcessList)
     bookingProcessList.forEach(async (bookingProcess) => {
@@ -71,6 +80,15 @@ async function plusHour() {
           { plusStatus: "full_plus" }
         );
       }
+
+      await notificationDao.saveAndSendNotification(
+        bookingProcess.spaceId.userId._id.toString(),
+        `Số tiền đặt không gian ${bookingProcess.spaceId.name} đã được trả về ví.`,
+        bookingProcess.spaceId?.images?.[0].url,
+        "/addfund"
+      );
+
+
     });
   } catch (error) {
     console.error("Error plus money", error);
@@ -87,7 +105,13 @@ async function plusDay() {
       rentalType: "day",
       plusStatus: { $ne: "full_plus" },
     })
-      .populate("spaceId")
+      .populate({
+        path: "spaceId", // Populate không gian
+        populate: {
+          path: "userId", // Populate userId của không gian
+          select: "fullname", // Lấy chỉ trường fullname của người dùng
+        },
+      })
       .populate("refundTransId");
     bookingProcessList.forEach(async (bookingProcess) => {
       let amount = Number(bookingProcess.totalAmount);
@@ -118,6 +142,12 @@ async function plusDay() {
           { plusStatus: "full_plus" }
         );
       }
+      await notificationDao.saveAndSendNotification(
+        bookingProcess.spaceId.userId._id.toString(),
+        `Số tiền đặt không gian ${bookingProcess.spaceId.name} đã được trả về ví.`,
+        bookingProcess.spaceId?.images?.[0].url,
+        "/addfund"
+      );
     });
   } catch (error) {
     console.error("Error plus money", error);
@@ -178,9 +208,15 @@ async function plusMonth() {
       status: "completed",
       startDate: { $lt: new Date() },
       rentalType: "month",
-      plusStatus: { $ne: "full_plus" }
+      plusStatus: { $ne: "full_plus" },
     })
-      .populate("spaceId")
+      .populate({
+        path: "spaceId", // Populate không gian
+        populate: {
+          path: "userId", // Populate userId của không gian
+          select: "fullname", // Lấy chỉ trường fullname của người dùng
+        },
+      })
       .populate("refundTransId")
       .populate("plusTransId");
     console.log(bookingProcessList);

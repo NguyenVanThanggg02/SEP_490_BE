@@ -47,7 +47,7 @@ const createReports = async (req, res) => {
 
     await notificationDao.saveAndSendNotification(
       space.userId.toString(),
-      `${user?.fullname} đã tố cáo space ${space?.name}`,
+      `${user?.fullname} đã tố cáo không gian ${space?.name} của bạn và đang chờ xét duyệt.`,
       userAvatar,
       "/report"
     );
@@ -56,7 +56,7 @@ const createReports = async (req, res) => {
     adminList.forEach((admin) => {
       notificationDao.saveAndSendNotification(
         admin._id.toString(),
-        `${user?.fullname} đã tố cáo không gian ${space?.name}`,
+        `${user?.fullname} đã tố cáo không gian ${space?.name}, cần xét duyệt.`,
         space.images && space.images.length > 0
           ? space.images[0].url
           : null, "/admin#manage-spaces-report"
