@@ -5,8 +5,24 @@ const fetchAllReports = async () => {
   try {
     const allReports = await Reports.find({})
     .populate("reasonId")
-    // .populate("userId")
-    // .populate("spaceId")
+    .populate("userId")
+    .populate({
+      path: "spaceId", // Populate không gian
+      populate: [
+        {
+          path: "userId", // Populate userId của không gian
+          select: "fullname", // Chỉ lấy trường fullname từ bảng users
+        },
+        {
+          path: "appliancesId", // Populate appliancesId của không gian
+          select: "appliances", // Chỉ lấy trường appliances từ bảng appliances
+          populate: {
+            path: "appliances", // Populate các đối tượng trong mảng appliances
+            select: "name", // Chỉ lấy các trường name và iconName từ mảng appliances
+          },
+        },
+      ],
+    })
     .exec();
     return allReports;
   } catch (error) {
@@ -23,19 +39,15 @@ const findReportByUserAndSpace = async (userId, spaceId) => {
 };
 
 
-const createReports = async (reasonId, userId, spaceId, customReason) => {
+const createReports = async (reasonId, userId, spaceId, customReason,statusReport = "Chờ duyệt") => {
   try {
     const createReport = await Reports.create({
       reasonId,
       userId,
       spaceId,
-      customReason
-    });
-    await Spaces.findByIdAndUpdate(
-      spaceId,
-      { $inc: { reportCount: 1 } },
-      { new: true }
-    );
+      customReason,
+      statusReport,
+    }); 
     return createReport;
   } catch (error) {
     throw new Error(error.toString());

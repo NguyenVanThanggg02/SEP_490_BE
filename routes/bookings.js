@@ -21,11 +21,11 @@ bookingRouter.get("/", async (req, res, next) => {
       .populate("userId")
       .exec();
     if (bookings.length === 0) {
-      throw createError(404, "Không tìm thấy dịch vụ");
+      res.status(404).json({ message: "Không tìm thấy dịch vụ" });
     }
     res.send(bookings);
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Lỗi server", error });
   }
 });
 
@@ -69,9 +69,9 @@ bookingRouter.put("/update-status/:id", async (req, res, next) => {
       // await sendEmailBookingCompleted.sendEmailBookingCompleted(tenantEmail, updatedBooking);
     }
 
-    res.json(updatedBooking);
+    res.status(200).json(updatedBooking);
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Lỗi server", error });
   }
 });
 

@@ -46,10 +46,10 @@ const registerSchema = Joi.object({
     "string.empty": `"fullname" không được bỏ trống`,
     "any.required": `"fullname" là bắt buộc`,
   }),
-  phone: Joi.string().required().messages({
-    "string.empty": `"phone" không được bỏ trống`,
-    "any.required": `"phone" là bắt buộc`,
-  }),
+  // phone: Joi.string().required().messages({
+  //   "string.empty": `"phone" không được bỏ trống`,
+  //   "any.required": `"phone" là bắt buộc`,
+  // }),
 });
 
 // Schema validation bằng Joi cho đăng nhập

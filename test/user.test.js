@@ -8,13 +8,7 @@ import Users from "../models/users.js";
 
 
 describe("User Controller Tests", () => {
-/* 
-req: request object
-res: respone object
-sandbox: công cụ của sinon.js để tạo và quản lý các spy, stub, mock trong test 
-nôn na giả lậo giữ liệu đầu ra cho các service để test xem 
-khi service trả về giữ liệu như vậy api chạy có đúng yêu cầu không!
-*/
+
   let req, res, sandbox;
 
   beforeEach(() => {
@@ -28,56 +22,33 @@ khi service trả về giữ liệu như vậy api chạy có đúng yêu cầu 
       json: sinon.stub(),
       send: sinon.stub(),
     };
-    // Quản lý các spy, stub, và mock trong từng test case. Sandbox đảm bảo rằng mọi thay đổi sẽ bị khôi phục sau mỗi test case, tránh tình trạng "rò rỉ" giữa các test.
     sandbox = sinon.createSandbox();
   });
 
   afterEach(() => {
-    // Khôi phục tất cả các phương thức gốc (original methods) mà các stub đã ghi đè.
-    //Đảm bảo rằng test tiếp theo sẽ không bị ảnh hưởng bởi các thay đổi trong test trước.
     sandbox.restore();
   });
 
   describe("getAllUsers", () => {
-    // đối với get user list có hai đầu status là 200 và 500 sẽ tương đương 2 test case test output ra được status đó
     it("should return all users with status 200", async () => {
-    // Tạo đây giả sử có một user có username là testuser
       const mockUsers = [{ id: 1, username: "testuser" }];
-      // khi gọi tới hàm fetchAllUsers của DAO sẽ trả về testuser có nghĩa khi gọi tới hàm list có giữ liệu đầu ra
       sandbox.stub(userDao, "fetchAllUsers").resolves(mockUsers);
 
-      // gọi tới api get list
       await userController.getAllUsers(req, res);
 
-      // check status có đúng 200 không
       expect(res.status.calledWith(200)).to.be.true;
       expect(res.json.calledWith(mockUsers)).to.be.true;
     });
 
-    // test case tiếp theo cần test là 500
     it("should handle errors and return status 500", async () => {
-    // đầu status 500 có nghĩa là đã sảy ra lỗi trong quá trình query dữ liệu
-    // tương tự tới test case bên trên nhưng thai vì trả ra user thì set khi gọi tới hàm fetchAllUsers của DAo sẽ trả về một exception
       sandbox.stub(userDao, "fetchAllUsers").rejects(new Error("Database error"));
 
-      // gọi api
       await userController.getAllUsers(req, res);
 
-      // test xem api có trả về lỗi hay không
       expect(res.status.calledWith(500)).to.be.true;
       expect(res.json.calledWith({ error: "Error: Database error" })).to.be.true;
     });
   });
-  /*
-  Với ví dụ trên => để test được một API thì cần thực hiện các bước sau
-  - Xác định số lượng test case sẽ trả ra: Số lượng test case sẽ nằm ở các đầu if else có return hoặc trả về status
-  - Khi đã xác định được api đó có bao nhiêu test case thi tiến hành code test
-  - Để code unit test:
-    + Định nghĩa dữ liệu đầu ra cho service là tầng xử lý logic trong project này là DAO
-    + Các test case của if sau cần thỏa mãn điều kiện của if phía trước (xem tại ví dụ change password trả về 404)
-    + Call tới API tại controller
-    + Check dữ liệu trả về có đúng không
-   */
 
   describe("getUserByUserName", () => {
     it("should return user by username with status 200", async () => {
@@ -102,68 +73,58 @@ khi service trả về giữ liệu như vậy api chạy có đúng yêu cầu 
     });
   });
 
-  describe("changePass", () => {
-    it("should update password successfully with status 200", async () => {
-      req.params.username = "testuser";
-      req.body = { oldPassword: "oldPass", newPassword: "newPass" };
-
-      const mockUser = {
-        username: "testuser",
-        password: "hashedOldPass",
-        save: sinon.stub().resolves(),
-      };
-
-      sandbox.stub(Users, "findOne").resolves(mockUser);
-      sandbox.stub(bcrypt, "compare").resolves(true);
-      sandbox.stub(bcrypt, "genSalt").resolves("salt");
-      sandbox.stub(bcrypt, "hash").resolves("hashedNewPass");
-
-      await userController.changePass(req, res);
-
+  describe("updateUser", () => {
+    it("should update user and return status 200", async () => {
+      const mockUpdatedUser = { id: "123", name: "Updated User" };
+      req.params.id = "123";
+      req.body = { name: "Updated User" };
+  
+      sandbox.stub(userDao, "updateUser").resolves(mockUpdatedUser);
+  
+      await userController.updateUser(req, res);
+  
       expect(res.status.calledWith(200)).to.be.true;
-      expect(
-        res.json.calledWith({ status: true, message: "Password updated successfully" })
-      ).to.be.true;
+      expect(res.json.calledWith(mockUpdatedUser)).to.be.true;
     });
-
-    
-    it("should return 400 if old password is incorrect", async () => {
-      req.params.username = "testuser";
-      req.body = { oldPassword: "wrongPass", newPassword: "newPass" };
-
-      const mockUser = {
-        username: "testuser",
-        password: "hashedOldPass",
-      };
-
-      sandbox.stub(Users, "findOne").resolves(mockUser);
-      sandbox.stub(bcrypt, "compare").resolves(false);
-
-      await userController.changePass(req, res);
-
+    it("should return 404 if user is not found", async () => {
+      req.params.id = "123";
+      req.body = { name: "Updated User" };
+  
+      // Giả lập không tìm thấy người dùng
+      sandbox.stub(userDao, "updateUser").resolves(null);
+  
+      await userController.updateUser(req, res);
+  
+      expect(res.status.calledWith(404)).to.be.true;
+      expect(res.json.calledWith({ message: "User not found" })).to.be.true;
+    });
+  
+    it("should return 400 if no data is provided for update", async () => {
+      req.params.id = "123";
+      req.body = {}; // Không có dữ liệu để cập nhật
+  
+      // Giả lập thành công mặc dù không có gì để cập nhật
+      sandbox.stub(userDao, "updateUser").resolves(null);
+  
+      await userController.updateUser(req, res);
+  
       expect(res.status.calledWith(400)).to.be.true;
-      expect(
-        res.json.calledWith({ status: false, message: "Old password is incorrect" })
-      ).to.be.true;
+      expect(res.json.calledWith({ message: "No data provided for update" })).to.be.true;
     });
-    // đây là ví dụ cho trường hợp if sau cần thoả mãn điều kiện của if trước
-    // Để chạy được 404 cần phải thỏa mãn điều kiện username, oldpassword, newpass không null
-    it("should return 404 if user not found", async () => {
-        // truyền vào một username cần tìm kiếm không có trong danh sách khởi tạo
-        req.params.username = "unknownUser";
-        // truyền đủ requried
-        req.body = { oldPassword: "oldPass", newPassword: "newPass" };
-        // gọi tới DAO và set cho giữ liệu đầu ra null
-        sandbox.stub(Users, "findOne").resolves(null);
-        await userController.changePass(req, res);
-        // check status có đúng hay không
-        expect(res.status.calledWith(404)).to.be.true;  
-        expect(res.json.calledWith({ status: false, message: "User not found" })).to.be.true;  
-      });
-      
-      
-      
+  
+    it("should handle errors and return status 500", async () => {
+      req.params.id = "123";
+      req.body = { name: "Updated User" };
+  
+      sandbox.stub(userDao, "updateUser").rejects(new Error("Database error"));
+  
+      await userController.updateUser(req, res);
+  
+      expect(res.status.calledWith(500)).to.be.true;
+      expect(res.json.calledWith({ error: "Error: Database error" })).to.be.true;
+    });
   });
+  
 
   describe("forgetPass", () => {
     it("should send reset email successfully", async () => {
@@ -188,7 +149,6 @@ khi service trả về giữ liệu như vậy api chạy có đúng yêu cầu 
         sandbox.stub(nodemailer, "createTransport").returns({ sendMail: sendMailStub });
       
         await userController.forgetPass(req, res);
-        console.log("Response sent:", res.send.args);
         expect(res.send.calledWith({ Status: "Lỗi khi gửi mail" })).to.be.true;
       });
       
@@ -198,8 +158,84 @@ khi service trả về giữ liệu như vậy api chạy có đúng yêu cầu 
 
       await userController.forgetPass(req, res);
 
-      // test case này không có status mà trả về message thì check message khớp không
-      expect(res.send.calledWith({ Status: "Không tìm thấy người dùng" })).to.be.true;
+      expect(res.send.calledWith({ Status: "Không thành công", Error: "Người dùng không tồn tại" })).to.be.true;
     });
   });
+
+  describe('uploadImages', () => {
+    let findByIdAndUpdateStub;
+    
+    beforeEach(() => {
+      // Mock phương thức findByIdAndUpdate của Users
+      findByIdAndUpdateStub = sinon.stub(Users, 'findByIdAndUpdate');
+    });
+  
+    afterEach(() => {
+      // Restore lại các stub sau khi mỗi test case
+      sinon.restore();
+    });
+  
+    it('should return 400 if no file uploaded', async () => {
+      const req = {
+        file: null,  // Không có file
+        body: { userId: 'userId123' }
+      };
+      const res = {
+        status: sinon.stub().returnsThis(),
+        json: sinon.stub()
+      };
+  
+      await userController.uploadImages(req, res);
+  
+      expect(res.status.calledOnceWith(400)).to.be.true;
+      expect(res.json.calledOnceWith({ message: 'No file uploaded' })).to.be.true;
+    });
+  
+    it('should upload image and return the image details with 200 status', async () => {
+      const mockImage = {
+        url: 'path/to/uploaded/image.jpg',
+        public_id: 'file123'
+      };
+  
+      const req = {
+        file: { path: mockImage.url, filename: mockImage.public_id },
+        body: { userId: 'userId123' }
+      };
+      const res = {
+        status: sinon.stub().returnsThis(),
+        json: sinon.stub()
+      };
+  
+      findByIdAndUpdateStub.resolves();  // Mock thành công khi cập nhật thông tin người dùng
+  
+      await userController.uploadImages(req, res);
+  
+      expect(findByIdAndUpdateStub.calledOnceWith('userId123', { avatar: mockImage.url }, { new: true })).to.be.true;
+      expect(res.status.calledOnceWith(200)).to.be.true;
+      expect(res.json.calledOnceWith({
+        message: 'Images uploaded successfully',
+        images: mockImage
+      })).to.be.true;
+    });
+  
+    it('should return 500 if an error occurs during image upload', async () => {
+      const req = {
+        file: { path: 'path/to/image.jpg', filename: 'file123' },
+        body: { userId: 'userId123' }
+      };
+      const res = {
+        status: sinon.stub().returnsThis(),
+        json: sinon.stub()
+      };
+  
+      // Giả lập lỗi trong quá trình cập nhật người dùng
+      findByIdAndUpdateStub.rejects(new Error('Database error'));
+  
+      await userController.uploadImages(req, res);
+  
+      expect(res.status.calledOnceWith(500)).to.be.true;
+      expect(res.json.calledOnceWith({ message: 'Server error', error: 'Database error' })).to.be.true;
+    });
+  });
+  
 });

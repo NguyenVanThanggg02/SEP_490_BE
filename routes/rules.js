@@ -13,10 +13,12 @@ const rulesRouter = express.Router();
 rulesRouter.get("/", async (req, res, next) => {
   try {
     const rules = await Rules.find({}).exec();
-    if (rules.length === 0) throw createError(404, "Not Found");
+    if (rules.length === 0) 
+      // throw createError(404, "Not Found");
+    res.status(404).json({ message: "Not Found" });
     res.json(rules);
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 rulesRouter.post("/", async (req, res, next) => {
@@ -26,7 +28,8 @@ rulesRouter.post("/", async (req, res, next) => {
     // Check if a rule with the same text already exists
     const textRules = await Rules.findOne({ text }).exec();
     if (textRules) {
-      return res.sendStatus(400); //  rule with this text already exists
+      return res.status(400).json({ message: "Rule with this text already exists." });
+      //  rule with this text already exists
     }
 
     const newRule = new Rules({ text, description });
@@ -34,7 +37,7 @@ rulesRouter.post("/", async (req, res, next) => {
 
     res.status(201).json(newRule);
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 rulesRouter.post("/addRule", async (req, res, next) => {
@@ -51,7 +54,7 @@ rulesRouter.post("/addRule", async (req, res, next) => {
     await ruleSet.save(); // Lưu vào database
     res.status(201).json(ruleSet); // Trả về rule mới tạo
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 

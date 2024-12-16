@@ -5,7 +5,7 @@ const fetchAllCommunityStandards = async () => {
     const community = await CommunityStandards.find({}).exec();
 
     const filteredCommunity = community.filter(item => 
-      item.reason && (!item.customeCommunityStandards || item.customeCommunityStandards.length === 0)
+      item.reasons && (!item.customeCommunityStandards || item.customeCommunityStandards.length === 0)
     );
 
     return filteredCommunity;
