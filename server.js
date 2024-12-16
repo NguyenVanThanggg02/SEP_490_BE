@@ -148,7 +148,7 @@ const server = createServer(app);
 const io = new initSocket(server, {
   cors: {
     // origin: "http://localhost:3000", // Allow frontend từ localhost:3000
-    origin: "*",
+    origin: "https://spacehub.site/",
   },
 });
 
