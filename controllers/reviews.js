@@ -21,7 +21,7 @@ const getReviewBySId = async (req, res) => {
 const deleteReviewBySId = async (req, res) => {
   try {
     const removeReview = await reviewDao.deleteReviewBySId(req.params.id);
-    if (removeReview) {
+    if (removeReview.deletedCount > 0) {
       res.status(200).json({ message: "Review deleted successfully" });
     } else {
       res.status(404).json({ message: "Not found review" });
@@ -65,13 +65,6 @@ const createReview = async (req, res) => {
       return res.status(400).json({ message: "Bạn đã đánh giá không gian này trước đó rồi !!!" });
     }
 
-    // const currDate = new Date();
-    // const checkOutDate = new Date(booking.endDate);
-    // if (currDate < checkOutDate || booking.status !== "completed") {
-    //   return res
-    //     .status(404)
-    //     .json({ message: "You must checkout before create preview" });
-    // }
     const newReview = await Reviews.create({ text, rating, spaceId, userId });
     await Spaces.findByIdAndUpdate(spaceId, {
       $push: { reviews: newReview._id },
@@ -93,6 +86,7 @@ const createReview = async (req, res) => {
     res.status(500).json({ message: error.toString() });
   }
 };
+
 
 const addReplyToReview = async (req, res) => {
   try {
@@ -118,5 +112,5 @@ export default {
   deleteReviewBySId,
   editReviewBySId,
   createReview,
-  addReplyToReview,
-};
+  addReplyToReview
+}

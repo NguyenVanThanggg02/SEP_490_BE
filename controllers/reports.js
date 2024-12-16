@@ -5,23 +5,27 @@ import Users from "../models/users.js";
 const getAllReports = async(req, res) =>{
   try {
     const allReports = await reportsDao.fetchAllReports()
+    if (!allReports) {
+      return res.status(500).json({ error: "Cannot retrieve reports" });
+    }
     res.status(200).json(allReports)
   } catch (error) {
-    throw new Error(error.message)
+    res.status(500).json({ error: error.message });
+
   }
 }
 
 const createReports = async (req, res) => {
   try {
-    const { reasonId, userId, spaceId, customReason, } = req.body;
+    const { reasonId, userId, spaceId, customReason,statusReport = "Chờ duyệt"  } = req.body;
+    const report = await reportsDao.createReports(reasonId, userId, spaceId, customReason,statusReport);
     
      // Kiểm tra xem người dùng đã báo cáo không gian này chưa
-     const existingReport = await reportsDao.findReportByUserAndSpace(userId, spaceId);
-     if (existingReport) {
-       return res.status(400).json({ message: "Bạn đã báo cáo không gian này trước đó rồi." });
-     }
+    //  const existingReport = await reportsDao.findReportByUserAndSpace(userId, spaceId);
+    //  if (existingReport) {
+    //    return res.status(400).json({ message: "Bạn đã báo cáo không gian này trước đó rồi." });
+    //  }
 
-    const report = await reportsDao.createReports(reasonId, userId, spaceId, customReason,);
 
     const space = await Spaces.findById(spaceId);
     const user = await Users.findById(userId);
@@ -44,7 +48,9 @@ const createReports = async (req, res) => {
     await notificationDao.saveAndSendNotification(
       space.userId.toString(),
       `${user?.fullname} đã tố cáo space ${space?.name}`,
-      userAvatar
+      userAvatar,
+      "/report"
+
     );
     res.status(200).json(report);
   } catch (error) {

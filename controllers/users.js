@@ -28,6 +28,9 @@ const changePass = async (req, res) => {
   try {
     const { username } = req.params;
     const { oldPassword, newPassword } = req.body;
+    console.log('Username:', username);
+    console.log('Old Password:', oldPassword);
+    console.log('New Password:', newPassword);
 
     if (!username || !oldPassword || !newPassword) {
       return res
@@ -42,8 +45,11 @@ const changePass = async (req, res) => {
     }
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
+    console.log('Password match:', isMatch);
 
     if (!isMatch) {
+      console.log('Old password is incorrect');
+
       return res
         .status(400)
         .json({ status: false, message: "Mật khẩu cũ không đúng" });
@@ -59,7 +65,8 @@ const changePass = async (req, res) => {
       .status(200)
       .json({ status: true, message: "Thay đổi mật khẩu thành công" });
   } catch (error) {
-    console.error("Lỗi trong khi thay đổi mật khẩu", error);
+    console.error('Error in changePass:', error);
+
     res
       .status(500)
       .json({ status: false, message: "Server error", error: error.message });
@@ -106,14 +113,12 @@ const forgetPass = async (req, res) => {
   
       transporter.sendMail(mailOptions, function (error, info) {
         if (error) {
-          console.log(error);
           return res.send({ Status: "Lỗi khi gửi mail" });
         } else {
           return res.send({ Status: "Thành công" });
         }
       });
     } catch (error) {
-      console.error(error);
       return res.send({ Status: "Error", Error: error.message });
     }
   };
@@ -327,7 +332,14 @@ const forgetPass = async (req, res) => {
 
   const updateUser = async (req, res) => {
     try {
+      if (Object.keys(req.body).length === 0) {
+        return res.status(400).json({ message: "No data provided for update" });
+      }
       const updateUser = await userDao.updateUser(req.params.id, req.body);
+      if (!updateUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
       res.status(200).json(updateUser);
     } catch (error) {
       res.status(500).json({ error: error.toString() });
@@ -357,8 +369,7 @@ const forgetPass = async (req, res) => {
         images: image, // Trả về thông tin ảnh đã upload
       });
     } catch (error) {
-      console.error('Error uploading images:', error);
-      return res.status(500).json({ message: 'Server error', error });
+      return res.status(500).json({ message: 'Server error', error: error.message });
     }
   };
   

@@ -19,6 +19,26 @@ const reportsSchema = new Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "spaces",
     },
+    statusReport: {
+      type: String,
+      enum: ["Chờ duyệt", "Chấp nhận","Từ chối"],
+      default: "Chờ duyệt",
+    },
+    statusComplaint:{
+      type: String,
+      enum: ["Chờ duyệt", "Chấp nhận","Từ chối"],
+      default: "Chờ duyệt",
+    },
+    reportRejectionReason:{
+      type: String,
+    },
+    reportRejectionComplaint:{
+      type: String,
+    },
+    complaint:{
+      type: String,
+      default: "",
+    }
   },
   { timestamps: true }
 );

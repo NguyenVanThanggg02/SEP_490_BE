@@ -1,12 +1,7 @@
 import express from "express";
 import Bank from "../models/bank.js";
 import createError from "http-errors";
-import {
-  signAccessToken,
-  signRefreshToken,
-  verifyRefreshToken,
-  verifyAccessToken,
-} from "../helpers/jwt_helper.js";
+
 const bankRouter = express.Router();
 bankRouter.get("/", async (req, res, next) => {
   try {
@@ -18,7 +13,7 @@ bankRouter.get("/", async (req, res, next) => {
     }
     res.status(200).json(bank);
   } catch (error) {
-    next(error);
+    res.status(500).send({ message: "Server Error" });
   }
 });
 export default bankRouter;
