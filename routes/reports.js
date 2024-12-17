@@ -3,6 +3,7 @@ import { reportsController } from "../controllers/index.js";
 import Reports from "../models/reports.js";
 import { notificationDao } from "../dao/index.js";
 import Spaces from "../models/spaces.js";
+import Users from "../models/users.js";
 
 const reportRouter = express.Router();
 reportRouter.post("/", reportsController.createReports);
@@ -98,12 +99,23 @@ reportRouter.put("/complaint/:id", async (req, res) => {
             id,
             { complaint: complaint.trim() }, // Cập nhật giá trị mới
             { new: true } // Trả về document đã cập nhật
-        );
-
+        ).populate('spaceId').populate('userId');
+        
         // Nếu không tìm thấy report
         if (!updatedReport) {
             return res.status(404).json({ message: "Không tìm thấy report." });
         }
+
+
+        const adminList = await Users.find({ role: 1 });
+        adminList.forEach((admin) => {
+          notificationDao.saveAndSendNotification(
+            admin._id.toString(),
+            `${updatedReport?.userId.fullname} đã gửi khiếu nại cho không gian ${updatedReport.spaceId.name}`,
+            updatedReport.spaceId?.images?.[0]?.url,
+             "/admin#manage-spaces-report"
+          );
+        });
 
         // Trả về kết quả thành công
         res.status(200).json({
@@ -175,7 +187,19 @@ reportRouter.put("/reportstatus/:postId", async (req, res, next) => {
             }
         }
         
+        await notificationDao.saveAndSendNotification(
+            postSpace.userId._id.toString(),
+            `Đơn tố cáo không gian ${postSpace.spaceId.name} của bạn đã được chấp nhận.`,
+            postSpace.spaceId?.images?.[0].url,
+            null
+          );
 
+          await notificationDao.saveAndSendNotification(
+            postSpace.spaceId.userId._id.toString(),
+            `Đơn tố cáo không gian ${postSpace.spaceId.name} đã được chấp nhận, bạn có thể gửi khiếu nại.`,
+            postSpace.spaceId?.images?.[0].url,
+            null
+          );
 
         res.status(200).json(postSpace);
     } catch (error) {
@@ -194,7 +218,7 @@ reportRouter.put('/reportsreject/:id', async (req, res) => {
 
     try {
         // Tìm và cập nhật báo cáo
-        const report = await Reports.findById(id);
+        const report = await Reports.findById(id).populate('spaceId');
 
         if (!report) {
             return res.status(404).json({ message: "Không tìm thấy báo cáo" });
@@ -204,6 +228,13 @@ reportRouter.put('/reportsreject/:id', async (req, res) => {
         report.statusReport = "Từ chối";
         report.reportRejectionReason = reportRejectionReason;
         await report.save();
+
+        await notificationDao.saveAndSendNotification(
+            report.userId._id.toString(),
+            `Đơn tố cáo không gian ${report.spaceId.name} của bạn đã bị từ chối vì lý do: ${reportRejectionReason}.`,
+            report.spaceId?.images?.[0].url,
+            null
+          );
 
         return res.status(200).json({
             message: "Báo cáo đã bị từ chối",
@@ -222,8 +253,18 @@ reportRouter.put('/complaintaccept/:id', async (req, res) => {
 
     try {
         // Tìm và cập nhật trạng thái báo cáo
-        const report = await Reports.findById(id);
-
+        const report = await Reports.findById(id)
+        .populate({
+            path: 'spaceId', // Populate không gian
+            populate:
+                {
+                    path: 'userId', // Populate userId của không gian
+                    select: 'fullname', // Lấy chỉ trường fullname của người dùng
+                }
+        })
+        console.log(report.userId);
+        console.log(report);
+        
         if (!report) {
             return res.status(404).json({ message: "Không tìm thấy báo cáo" });
         }
@@ -248,6 +289,14 @@ reportRouter.put('/complaintaccept/:id', async (req, res) => {
         report.statusReport = "Từ chối";
         await report.save();
 
+
+          await notificationDao.saveAndSendNotification(
+            report.spaceId.userId._id.toString(),
+            `Đơn khiếu nại không gian ${report.spaceId.name} của bạn đã được chấp nhận.`,
+            report.spaceId?.images?.[0].url,
+            '/report'
+          );
+
         return res.status(200).json({
             message: "Khiếu nại đã được chấp nhận",
             data: report,
@@ -268,7 +317,15 @@ reportRouter.put('/reportsrejectcomplaint/:id', async (req, res) => {
 
     try {
         // Tìm và cập nhật báo cáo
-        const report = await Reports.findById(id);
+        const report = await Reports.findById(id)
+        .populate({
+            path: 'spaceId', // Populate không gian
+            populate:
+                {
+                    path: 'userId', // Populate userId của không gian
+                    select: 'fullname', // Lấy chỉ trường fullname của người dùng
+                }
+        });
 
         if (!report) {
             return res.status(404).json({ message: "Không tìm thấy báo cáo" });
@@ -278,6 +335,13 @@ reportRouter.put('/reportsrejectcomplaint/:id', async (req, res) => {
         report.statusComplaint = "Từ chối";
         report.reportRejectionComplaint = reportRejectionComplaint.trim();
         await report.save();
+
+        await notificationDao.saveAndSendNotification(
+            report.spaceId.userId._id.toString(),
+            `Đơn khiếu nại không gian ${report.spaceId.name} của bạn đã bị từ chối.`,
+            report.spaceId?.images?.[0].url,
+            '/report'
+          );
 
         return res.status(200).json({
             message: "Báo cáo đã bị từ chối",

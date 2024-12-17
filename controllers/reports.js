@@ -47,11 +47,21 @@ const createReports = async (req, res) => {
 
     await notificationDao.saveAndSendNotification(
       space.userId.toString(),
-      `${user?.fullname} đã tố cáo space ${space?.name}`,
+      `${user?.fullname} đã tố cáo không gian ${space?.name} của bạn và đang chờ xét duyệt.`,
       userAvatar,
       "/report"
-
     );
+
+    const adminList = await Users.find({ role: 1 });
+    adminList.forEach((admin) => {
+      notificationDao.saveAndSendNotification(
+        admin._id.toString(),
+        `${user?.fullname} đã tố cáo không gian ${space?.name}, cần xét duyệt.`,
+        space.images && space.images.length > 0
+          ? space.images[0].url
+          : null, "/admin#manage-spaces-report"
+      );
+    });
     res.status(200).json(report);
   } catch (error) {
     res.status(500).json({ error: error.toString() });
